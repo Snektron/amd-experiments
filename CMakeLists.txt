@@ -6,3 +6,7 @@ set(CMAKE_HIP_STANDARD 23)
 
 add_executable(memory memory.hip)
 target_link_libraries(memory stdc++_libbacktrace)
+
+add_executable(shuffle shuffle.hip)
+target_link_libraries(shuffle stdc++_libbacktrace)
+

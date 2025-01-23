@@ -26,7 +26,11 @@ namespace benchmark {
         }
 
         constexpr double giga() const {
-            return static_cast<double>(this->count) / 1000'000'000.f;
+            return static_cast<double>(this->count) / 1'000'000'000.f;
+        }
+
+        constexpr double tera() const {
+            return static_cast<double>(this->count) / 1'000'000'000'000.f;
         }
     };
 
@@ -40,7 +44,11 @@ namespace benchmark {
         { }
 
         constexpr double giga() const {
-            return this->rate / 1000'000'000.f;
+            return this->rate / 1'000'000'000.f;
+        }
+
+        constexpr double tera() const {
+            return this->rate / 1'000'000'000'000.f;
         }
     };
 
