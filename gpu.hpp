@@ -1,35 +1,27 @@
 #ifndef _GPU_HPP
 #define _GPU_HPP
 
+#include "common.hpp"
+
 #include <hip/hip_runtime.h>
-#include <stdexcept>
-#include <sstream>
-#include <stacktrace>
+#include <format>
 #include <cstddef>
 #include <cassert>
 
-#define GPU_TRY(expr) {                                               \
-    const auto _result = (expr);                                      \
-    if (_result != hipSuccess) {                                      \
-        throw ::gpu::error(_result, std::stacktrace::current()); \
-    }                                                                 \
+#define GPU_TRY(expr) {              \
+    const auto _result = (expr);     \
+    if (_result != hipSuccess) {     \
+        throw ::gpu::error(_result); \
+    }                                \
 }
 
 namespace gpu {
-    struct error: std::runtime_error {
+    struct error: traced_error {
         hipError_t status;
-        std::stacktrace trace;
 
-        static std::string get_error_msg(hipError_t status) {
-            std::stringstream ss;
-            ss << hipGetErrorString(status) << " (" << status << ")";
-            return ss.str();
-        }
-
-        error(hipError_t status, std::stacktrace trace):
-            runtime_error(get_error_msg(status)),
-            status(status),
-            trace(trace)
+        error(hipError_t status):
+            traced_error("{} ({})", hipGetErrorString(status), static_cast<int>(status)),
+            status(status)
         {
             assert(status != hipSuccess);
         }
@@ -47,6 +39,7 @@ namespace gpu {
         }
 
     public:
+        explicit ptr(T* raw): raw(raw) {}
 
         ptr(const ptr&) = delete;
         ptr& operator=(const ptr&) = delete;
@@ -124,6 +117,8 @@ namespace gpu {
             GPU_TRY(hipStreamCreateWithFlags(&this->handle, static_cast<unsigned int>(flags)));
         }
 
+        constexpr explicit stream(hipStream_t underlying): handle(underlying) {}
+
     public:
         stream(const stream&) = delete;
         stream& operator=(const stream&) = delete;
@@ -162,6 +157,19 @@ namespace gpu {
         }
     };
 
+    using device_properties = hipDeviceProp_t;
+
+    struct pci_address {
+        uint16_t domain;
+        uint8_t bus;
+        uint8_t device;
+        uint8_t function;
+
+        uint64_t rsmi_id() const {
+            return (this->domain << 13) | (this->bus << 8) | (this->device << 3) | this->function;
+        }
+    };
+
     struct device {
         int ordinal;
 
@@ -184,7 +192,7 @@ namespace gpu {
             return stream(flags);
         }
 
-        hipDeviceProp_t get_properties() const {
+        device_properties get_properties() const {
             hipDeviceProp_t props;
             GPU_TRY(hipGetDeviceProperties(&props, this->ordinal));
             return props;
@@ -198,6 +206,22 @@ namespace gpu {
             return 256 * 1024 * 1024;
         }
 
+        pci_address get_pci_bus_id() const {
+            char pci_string[256] = {0};
+            GPU_TRY(hipDeviceGetPCIBusId(pci_string, sizeof(pci_string) - 1, this->ordinal));
+            pci_address addr;
+            unsigned int dom, bus, dev, func;
+            if (std::sscanf(pci_string, "%04x:%02x:%02x.%01x", &dom, &bus, &dev, &func) != 4) {
+                throw traced_error("could not parse GPU {} PCI id '{}'", this->ordinal, pci_string);
+            }
+            return {
+                .domain = static_cast<uint16_t>(dom),
+                .bus = static_cast<uint8_t>(bus),
+                .device = static_cast<uint8_t>(dev),
+                .function = static_cast<uint8_t>(func),
+            };
+        }
+
         void sync() const {
             this->make_active();
             GPU_TRY(hipDeviceSynchronize());
@@ -206,5 +230,24 @@ namespace gpu {
 
     constexpr const static auto default_device = device(0);
 }
+
+template<>
+struct std::formatter<gpu::pci_address, char> {
+    template <typename ParseContext>
+    constexpr auto parse(ParseContext& ctx) {
+        return ctx.begin();
+    }
+
+    template <typename FmtContext>
+    FmtContext::iterator format(gpu::pci_address addr, FmtContext& ctx) const {
+        return std::format_to( ctx.out(),
+            "{:04x}:{:02x}:{:02x}.{:01x}",
+            addr.domain,
+            addr.bus,
+            addr.device,
+            addr.function
+        );
+    }
+};
 
 #endif

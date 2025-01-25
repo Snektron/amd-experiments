@@ -53,11 +53,8 @@ void load_kernel(T* __restrict__ buffer) {
 }
 
 template<typename T, int block_size, int items_per_thread>
-void load() {
-    const auto dev = gpu::default_device;
-    const auto dev_props = dev.get_properties();
-
-    const size_t grid_size = dev_props.totalGlobalMem * 90 / 100 / (sizeof(T) * items_per_thread * block_size);
+void load(benchmark::executor& exec) {
+    const size_t grid_size = exec.dev_props.totalGlobalMem * 90 / 100 / (sizeof(T) * items_per_thread * block_size);
     const size_t buffer_items = grid_size * block_size * items_per_thread;
 
     const auto buffer_size = benchmark::size(buffer_items);
@@ -65,9 +62,9 @@ void load() {
     const auto reads = benchmark::size(grid_size * block_size * items_per_thread);
     const auto read_bytes = reads.to_bytes<T>();
 
-    std::cout << "total gmem:       " << benchmark::size(dev_props.totalGlobalMem).giga() << " GB\n";
-    std::cout << "l2 cache size:    " << dev_props.l2CacheSize << '\n';
-    std::cout << "compute units:    " << dev_props.multiProcessorCount << '\n';
+    std::cout << "total gmem:       " << benchmark::size(exec.dev_props.totalGlobalMem).giga() << " GB\n";
+    std::cout << "l2 cache size:    " << exec.dev_props.l2CacheSize << '\n';
+    std::cout << "compute units:    " << exec.dev_props.multiProcessorCount << '\n';
     std::cout << "grid size:        " << grid_size << '\n';
     std::cout << "block size:       " << block_size << '\n';
     std::cout << "items per thread: " << items_per_thread << '\n';
@@ -81,8 +78,8 @@ void load() {
         .block_size = block_size,
     };
 
-    const auto buffer = dev.alloc<T>(buffer_items);
-    const auto stats = benchmark::run(dev, [&](const auto& stream) {
+    const auto buffer = exec.dev.alloc<T>(buffer_items);
+    const auto stats = exec.bench([&](const auto& stream) {
         stream.launch(cfg, load_kernel<T, block_size, items_per_thread>, buffer.raw);
     });
 
@@ -95,16 +92,17 @@ void load() {
 
 int main() {
     try {
-        load<int, 64, 16>();
-        load<int, 64, 32>();
-        load<int, 128, 16>();
-        load<int, 128, 32>();
-        load<int, 256, 16>();
-        load<int, 256, 32>();
-        load<int, 512, 16>();
-        load<int, 512, 32>();
-        load<int, 1024, 16>();
-        load<int, 1024, 32>();
+        auto exec = benchmark::executor(gpu::default_device);
+        load<int, 64, 16>(exec);
+        load<int, 64, 32>(exec);
+        load<int, 128, 16>(exec);
+        load<int, 128, 32>(exec);
+        load<int, 256, 16>(exec);
+        load<int, 256, 32>(exec);
+        load<int, 512, 16>(exec);
+        load<int, 512, 32>(exec);
+        load<int, 1024, 16>(exec);
+        load<int, 1024, 32>(exec);
     } catch (const gpu::error& e) {
         std::cerr << "caught exception: " << e.what() << "\n";
         std::cerr << e.trace << "\n";
