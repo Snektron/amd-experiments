@@ -23,10 +23,10 @@ void load_kernel(T* __restrict__ buffer) {
     if constexpr (items_per_thread == 16) {
         __uint128_t a, b, c, d;
         asm volatile(
-            "global_load_dwordx4 %0, %4 off glc slc\n\t"
-            "global_load_dwordx4 %1, %4 off offset:1024 glc slc\n\t"
-            "global_load_dwordx4 %2, %4 off offset:2048 glc slc\n\t"
-            "global_load_dwordx4 %3, %4 off offset:3072 glc slc\n\t"
+            "global_load_b128 %0, %4 off scope:SCOPE_DEV th:TH_LOAD_NT\n\t"
+            "global_load_b128 %1, %4 off offset:1024 scope:SCOPE_DEV th:TH_LOAD_NT\n\t"
+            "global_load_b128 %2, %4 off offset:2048 scope:SCOPE_DEV th:TH_LOAD_NT\n\t"
+            "global_load_b128 %3, %4 off offset:3072 scope:SCOPE_DEV th:TH_LOAD_NT\n\t"
             "s_waitcnt vmcnt(0)"
             : "=&v"(a), "=&v"(b), "=&v"(c), "=&v"(d)
             : "v"(ptr)
@@ -35,14 +35,14 @@ void load_kernel(T* __restrict__ buffer) {
         __uint128_t a, b, c, d;
         __uint128_t e, f, g, h;
         asm volatile(
-            "global_load_dwordx4 %0, %8 off offset:-4096 glc slc\n\t"
-            "global_load_dwordx4 %1, %8 off offset:-3072 glc slc\n\t"
-            "global_load_dwordx4 %2, %8 off offset:-2048 glc slc\n\t"
-            "global_load_dwordx4 %3, %8 off offset:-1024 glc slc\n\t"
-            "global_load_dwordx4 %4, %8 off offset:0000 glc slc\n\t"
-            "global_load_dwordx4 %5, %8 off offset:1024 glc slc\n\t"
-            "global_load_dwordx4 %6, %8 off offset:2048 glc slc\n\t"
-            "global_load_dwordx4 %7, %8 off offset:3072 glc slc\n\t"
+            "global_load_b128 %0, %8 off offset:-4096 scope:SCOPE_DEV th:TH_LOAD_NT\n\t"
+            "global_load_b128 %1, %8 off offset:-3072 scope:SCOPE_DEV th:TH_LOAD_NT\n\t"
+            "global_load_b128 %2, %8 off offset:-2048 scope:SCOPE_DEV th:TH_LOAD_NT\n\t"
+            "global_load_b128 %3, %8 off offset:-1024 scope:SCOPE_DEV th:TH_LOAD_NT\n\t"
+            "global_load_b128 %4, %8 off offset:0000 scope:SCOPE_DEV th:TH_LOAD_NT\n\t"
+            "global_load_b128 %5, %8 off offset:1024 scope:SCOPE_DEV th:TH_LOAD_NT\n\t"
+            "global_load_b128 %6, %8 off offset:2048 scope:SCOPE_DEV th:TH_LOAD_NT\n\t"
+            "global_load_b128 %7, %8 off offset:3072 scope:SCOPE_DEV th:TH_LOAD_NT\n\t"
             "s_waitcnt vmcnt(0)"
             : "=&v"(a), "=&v"(b), "=&v"(c), "=&v"(d), "=&v"(e), "=&v"(f), "=&v"(g), "=&v"(h)
             : "v"(ptr + 1024)
