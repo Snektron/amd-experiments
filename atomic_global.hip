@@ -12,19 +12,25 @@
 #endif
 
 #if defined(__GFX12__)
-#define RETURN_MODIFIER "th:TH_ATOMIC_RETURN"
+#define RETURN_MODIFIER " th:TH_ATOMIC_RETURN"
 #elif defined(__gfx942__)
-#define RETURN_MODIFIER "sc0"
+#define RETURN_MODIFIER " sc0"
 #else
-#define RETURN_MODIFIER "glc"
+#define RETURN_MODIFIER " glc"
 #endif
 
 #if defined(__GFX12__)
-#define COHERENT_MODIFIER "scope:SCOPE_DEV"
+#define COHERENT_MODIFIER ""
 #elif defined(__gfx942__)
-#define COHERENT_MODIFIER "sc1"
+#define COHERENT_MODIFIER " sc1"
 #else
-#define COHERENT_MODIFIER "glc"
+#define COHERENT_MODIFIER " glc"
+#endif
+
+#if defined(__GFX12__)
+#define SCOPE_MODIFIER " scope:SCOPE_DEV"
+#else
+#define SCOPE_MODIFIER ""
 #endif
 
 #if defined(__gfx90a__) || defined(__gfx942__) || defined(__GFX11__) || defined(__GFX12__)
@@ -125,91 +131,91 @@ int main() {
         if (use_new_instruction_names) {
             test<uint32_t>(exec, "global_store_b32", [](auto addr, auto data) {
                 #if USE_NEW_INSTRUCTION_NAMES
-                asm volatile("global_store_b32 %0, %1, off " COHERENT_MODIFIER :: "v"(addr), "v"(data) : "memory");
+                asm volatile("global_store_b32 %0, %1, off" COHERENT_MODIFIER SCOPE_MODIFIER :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint32_t>(exec, "global_load_b32", [](auto addr, auto data) {
                 #if USE_NEW_INSTRUCTION_NAMES
                 uint32_t rtn;
-                asm volatile("global_load_b32 %0, %1, off " COHERENT_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                asm volatile("global_load_b32 %0, %1, off" COHERENT_MODIFIER SCOPE_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint32_t>(exec, "global_atomic_add_u32", [](auto addr, auto data) {
                 #if USE_NEW_INSTRUCTION_NAMES
-                asm volatile("global_atomic_add_u32 %0, %1, off" :: "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_add_u32 %0, %1, off" SCOPE_MODIFIER :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint32_t>(exec, "global_atomic_add_u32 return", [](auto addr, auto data) {
                 #if USE_NEW_INSTRUCTION_NAMES
                 uint32_t rtn;
-                asm volatile("global_atomic_add_u32 %0, %1, %2, off " RETURN_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_add_u32 %0, %1, %2, off" RETURN_MODIFIER SCOPE_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint32_t>(exec, "global_atomic_min_u32", [](auto addr, auto data) {
                 #if USE_NEW_INSTRUCTION_NAMES
-                asm volatile("global_atomic_min_u32 %0, %1, off" :: "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_min_u32 %0, %1, off" SCOPE_MODIFIER :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint32_t>(exec, "global_atomic_min_u32 return", [](auto addr, auto data) {
                 #if USE_NEW_INSTRUCTION_NAMES
                 uint32_t rtn;
-                asm volatile("global_atomic_min_u32 %0, %1, %2, off " RETURN_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_min_u32 %0, %1, %2, off" RETURN_MODIFIER SCOPE_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint32_t>(exec, "global_atomic_and_b32", [](auto addr, auto data) {
                 #if USE_NEW_INSTRUCTION_NAMES
-                asm volatile("global_atomic_and_b32 %0, %1, off" :: "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_and_b32 %0, %1, off" SCOPE_MODIFIER :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint32_t>(exec, "global_atomic_and_b32 return", [](auto addr, auto data) {
                 #if USE_NEW_INSTRUCTION_NAMES
                 uint32_t rtn;
-                asm volatile("global_atomic_and_b32 %0, %1, %2, off " RETURN_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_and_b32 %0, %1, %2, off" RETURN_MODIFIER SCOPE_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
                 #endif
             });
         } else {
             test<uint32_t>(exec, "global_store_dword", [](auto addr, auto data) {
                 #if !USE_NEW_INSTRUCTION_NAMES
-                asm volatile("global_store_dword %0, %1, off " COHERENT_MODIFIER :: "v"(addr), "v"(data) : "memory");
+                asm volatile("global_store_dword %0, %1, off" COHERENT_MODIFIER SCOPE_MODIFIER :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint32_t>(exec, "global_load_dword", [](auto addr, auto data) {
                 #if !USE_NEW_INSTRUCTION_NAMES
                 uint32_t rtn;
-                asm volatile("global_load_dword %0, %1, off " COHERENT_MODIFIER : "=&v"(rtn) : "v"(addr) : "memory");
+                asm volatile("global_load_dword %0, %1, off" COHERENT_MODIFIER SCOPE_MODIFIER : "=&v"(rtn) : "v"(addr) : "memory");
                 #endif
             });
             test<uint32_t>(exec, "global_atomic_add", [](auto addr, auto data) {
                 #if !USE_NEW_INSTRUCTION_NAMES
-                asm volatile("global_atomic_add %0, %1, off" :: "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_add %0, %1, off" SCOPE_MODIFIER :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint32_t>(exec, "global_atomic_add return", [](auto addr, auto data) {
                 #if !USE_NEW_INSTRUCTION_NAMES
                 uint32_t rtn;
-                asm volatile("global_atomic_add %0, %1, %2, off " RETURN_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_add %0, %1, %2, off" RETURN_MODIFIER SCOPE_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint32_t>(exec, "global_atomic_umax", [](auto addr, auto data) {
                 #if !USE_NEW_INSTRUCTION_NAMES
-                asm volatile("global_atomic_umax %0, %1, off" :: "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_umax %0, %1, off" SCOPE_MODIFIER :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint32_t>(exec, "global_atomic_umax return", [](auto addr, auto data) {
                 #if !USE_NEW_INSTRUCTION_NAMES
                 uint32_t rtn;
-                asm volatile("global_atomic_umax %0, %1, %2, off " RETURN_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_umax %0, %1, %2, off" RETURN_MODIFIER SCOPE_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint32_t>(exec, "global_atomic_and", [](auto addr, auto data) {
                 #if !USE_NEW_INSTRUCTION_NAMES
-                asm volatile("global_atomic_and %0, %1, off" :: "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_and %0, %1, off" SCOPE_MODIFIER :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint32_t>(exec, "global_atomic_and return", [](auto addr, auto data) {
                 #if !USE_NEW_INSTRUCTION_NAMES
                 uint32_t rtn;
-                asm volatile("global_atomic_and %0, %1, %2, off " RETURN_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_and %0, %1, %2, off" RETURN_MODIFIER SCOPE_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
                 #endif
             });
         }
@@ -218,91 +224,91 @@ int main() {
         if (use_new_instruction_names) {
             test<uint64_t>(exec, "global_store_b64", [](auto addr, auto data) {
                 #if USE_NEW_INSTRUCTION_NAMES
-                asm volatile("global_store_b64 %0, %1, off " COHERENT_MODIFIER :: "v"(addr), "v"(data) : "memory");
+                asm volatile("global_store_b64 %0, %1, off" COHERENT_MODIFIER SCOPE_MODIFIER :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint64_t>(exec, "global_load_b64", [](auto addr, auto data) {
                 #if USE_NEW_INSTRUCTION_NAMES
                 uint64_t rtn;
-                asm volatile("global_load_b64 %0, %1, off " COHERENT_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                asm volatile("global_load_b64 %0, %1, off" COHERENT_MODIFIER SCOPE_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint64_t>(exec, "global_atomic_add_u64", [](auto addr, auto data) {
                 #if USE_NEW_INSTRUCTION_NAMES
-                asm volatile("global_atomic_add_u64 %0, %1, off" :: "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_add_u64 %0, %1, off" SCOPE_MODIFIER :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint64_t>(exec, "global_atomic_add_u64 return", [](auto addr, auto data) {
                 #if USE_NEW_INSTRUCTION_NAMES
                 uint64_t rtn;
-                asm volatile("global_atomic_add_u64 %0, %1, %2, off " RETURN_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_add_u64 %0, %1, %2, off" RETURN_MODIFIER SCOPE_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint64_t>(exec, "global_atomic_min_u64", [](auto addr, auto data) {
                 #if USE_NEW_INSTRUCTION_NAMES
-                asm volatile("global_atomic_min_u64 %0, %1, off" :: "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_min_u64 %0, %1, off" SCOPE_MODIFIER :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint64_t>(exec, "global_atomic_min_u64 return", [](auto addr, auto data) {
                 #if USE_NEW_INSTRUCTION_NAMES
                 uint64_t rtn;
-                asm volatile("global_atomic_min_u64 %0, %1, %2, off " RETURN_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_min_u64 %0, %1, %2, off" RETURN_MODIFIER SCOPE_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint64_t>(exec, "global_atomic_and_b64", [](auto addr, auto data) {
                 #if USE_NEW_INSTRUCTION_NAMES
-                asm volatile("global_atomic_and_b64 %0, %1, off" :: "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_and_b64 %0, %1, off" SCOPE_MODIFIER :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint64_t>(exec, "global_atomic_and_b64 return", [](auto addr, auto data) {
                 #if USE_NEW_INSTRUCTION_NAMES
                 uint64_t rtn;
-                asm volatile("global_atomic_and_b64 %0, %1, %2, off " RETURN_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_and_b64 %0, %1, %2, off" RETURN_MODIFIER SCOPE_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
                 #endif
             });
         } else {
             test<uint64_t>(exec, "global_store_dwordx2", [](auto addr, auto data) {
                 #if !USE_NEW_INSTRUCTION_NAMES
-                asm volatile("global_store_dwordx2 %0, %1, off " COHERENT_MODIFIER :: "v"(addr), "v"(data) : "memory");
+                asm volatile("global_store_dwordx2 %0, %1, off" COHERENT_MODIFIER SCOPE_MODIFIER :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint64_t>(exec, "global_load_dwordx2", [](auto addr, auto data) {
                 #if !USE_NEW_INSTRUCTION_NAMES
                 uint64_t rtn;
-                asm volatile("global_load_dwordx2 %0, %1, off " COHERENT_MODIFIER : "=&v"(rtn) : "v"(addr) : "memory");
+                asm volatile("global_load_dwordx2 %0, %1, off" COHERENT_MODIFIER SCOPE_MODIFIER : "=&v"(rtn) : "v"(addr) : "memory");
                 #endif
             });
             test<uint64_t>(exec, "global_atomic_add_x2", [](auto addr, auto data) {
                 #if !USE_NEW_INSTRUCTION_NAMES
-                asm volatile("global_atomic_add_x2 %0, %1, off" :: "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_add_x2 %0, %1, off" SCOPE_MODIFIER :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint64_t>(exec, "global_atomic_add_x2 return", [](auto addr, auto data) {
                 #if !USE_NEW_INSTRUCTION_NAMES
                 uint64_t rtn;
-                asm volatile("global_atomic_add_x2 %0, %1, %2, off " RETURN_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_add_x2 %0, %1, %2, off" RETURN_MODIFIER SCOPE_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint64_t>(exec, "global_atomic_umax_x2", [](auto addr, auto data) {
                 #if !USE_NEW_INSTRUCTION_NAMES
-                asm volatile("global_atomic_umax_x2 %0, %1, off" :: "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_umax_x2 %0, %1, off" SCOPE_MODIFIER :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint64_t>(exec, "global_atomic_umax_x2 return", [](auto addr, auto data) {
                 #if !USE_NEW_INSTRUCTION_NAMES
                 uint64_t rtn;
-                asm volatile("global_atomic_umax_x2 %0, %1, %2, off " RETURN_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_umax_x2 %0, %1, %2, off" RETURN_MODIFIER SCOPE_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint64_t>(exec, "global_atomic_and_x2", [](auto addr, auto data) {
                 #if !USE_NEW_INSTRUCTION_NAMES
-                asm volatile("global_atomic_and_x2 %0, %1, off" :: "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_and_x2 %0, %1, off" SCOPE_MODIFIER :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint64_t>(exec, "global_atomic_and_x2 return", [](auto addr, auto data) {
                 #if !USE_NEW_INSTRUCTION_NAMES
                 uint64_t rtn;
-                asm volatile("global_atomic_and_x2 %0, %1, %2, off " RETURN_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_and_x2 %0, %1, %2, off" RETURN_MODIFIER SCOPE_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
                 #endif
             });
         }
@@ -311,26 +317,26 @@ int main() {
         if (arch_name.find("gfx90a") == 0 || arch_name.find("gfx942") == 0 || arch_name.find("gfx11") == 0 || arch_name.find("gfx12") == 0) {
             test<float>(exec, "global_atomic_add_f32", [](auto addr, auto data) {
                 #if HAS_GLOBAL_ATOMIC_ADD_F32
-                asm volatile("global_atomic_add_f32 %0, %1, off" :: "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_add_f32 %0, %1, off" SCOPE_MODIFIER :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<float>(exec, "global_atomic_add_f32 return", [](auto addr, auto data) {
                 #if HAS_GLOBAL_ATOMIC_ADD_F32
                 float rtn;
-                asm volatile("global_atomic_add_f32 %0, %1, %2, off " RETURN_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_add_f32 %0, %1, %2, off" RETURN_MODIFIER SCOPE_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
                 #endif
             });
         }
         if (arch_name.find("gfx12") == 0) {
             test<float>(exec, "global_atomic_min_num_f32", [](auto addr, auto data) {
                 #if HAS_GLOBAL_ATOMIC_MIN_NUM_F32
-                asm volatile("global_atomic_min_num_f32 %0, %1, off" :: "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_min_num_f32 %0, %1, off" SCOPE_MODIFIER :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<float>(exec, "global_atomic_min_num_f32 return", [](auto addr, auto data) {
                 #if HAS_GLOBAL_ATOMIC_MIN_NUM_F32
                 float rtn;
-                asm volatile("global_atomic_min_num_f32 %0, %1, %2, off " RETURN_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_min_num_f32 %0, %1, %2, off" RETURN_MODIFIER SCOPE_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
                 #endif
             });
         }
@@ -339,24 +345,24 @@ int main() {
         if (arch_name.find("gfx90a") == 0 || arch_name.find("gfx942") == 0) {
             test<double>(exec, "global_atomic_add_f64", [](auto addr, auto data) {
                 #if HAS_GLOBAL_ATOMIC_ADD_F64
-                asm volatile("global_atomic_add_f64 %0, %1, off" :: "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_add_f64 %0, %1, off" SCOPE_MODIFIER :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<double>(exec, "global_atomic_add_f64 return", [](auto addr, auto data) {
                 #if HAS_GLOBAL_ATOMIC_ADD_F64
                 double rtn;
-                asm volatile("global_atomic_add_f64 %0, %1, %2, off " RETURN_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_add_f64 %0, %1, %2, off" RETURN_MODIFIER SCOPE_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<double>(exec, "global_atomic_min_f64", [](auto addr, auto data) {
                 #if HAS_GLOBAL_ATOMIC_ADD_F64
-                asm volatile("global_atomic_min_f64 %0, %1, off" :: "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_min_f64 %0, %1, off" SCOPE_MODIFIER :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<double>(exec, "global_atomic_min_f64 return", [](auto addr, auto data) {
                 #if HAS_GLOBAL_ATOMIC_ADD_F64
                 double rtn;
-                asm volatile("global_atomic_min_f64 %0, %1, %2, off " RETURN_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_min_f64 %0, %1, %2, off" RETURN_MODIFIER SCOPE_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
                 #endif
             });
         }
@@ -365,24 +371,24 @@ int main() {
         if (arch_name.find("gfx942") == 0 || arch_name.find("gfx12") == 0) {
             test<uint32_t>(exec, "global_atomic_pk_add_f16", [](auto addr, auto data) {
                 #if HAS_GLOBAL_ATOMIC_PK_ADD
-                asm volatile("global_atomic_pk_add_f16 %0, %1, off" :: "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_pk_add_f16 %0, %1, off" SCOPE_MODIFIER :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint32_t>(exec, "global_atomic_pk_add_f16 return", [](auto addr, auto data) {
                 #if HAS_GLOBAL_ATOMIC_PK_ADD
                 uint32_t rtn;
-                asm volatile("global_atomic_pk_add_f16 %0, %1, %2, off " RETURN_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_pk_add_f16 %0, %1, %2, off" RETURN_MODIFIER SCOPE_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint32_t>(exec, "global_atomic_pk_add_bf16", [](auto addr, auto data) {
                 #if HAS_GLOBAL_ATOMIC_PK_ADD
-                asm volatile("global_atomic_pk_add_bf16 %0, %1, off" :: "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_pk_add_bf16 %0, %1, off" SCOPE_MODIFIER :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint32_t>(exec, "global_atomic_pk_add_bf16 return", [](auto addr, auto data) {
                 #if HAS_GLOBAL_ATOMIC_PK_ADD
                 uint32_t rtn;
-                asm volatile("global_atomic_pk_add_bf16 %0, %1, %2, off " RETURN_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                asm volatile("global_atomic_pk_add_bf16 %0, %1, %2, off" RETURN_MODIFIER SCOPE_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
                 #endif
             });
         }
