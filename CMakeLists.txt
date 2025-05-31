@@ -9,15 +9,17 @@ include(FetchContent)
 FetchContent_Declare(
     rocm_smi
     GIT_REPOSITORY https://github.com/ROCm/rocm_smi_lib
-    GIT_TAG rocm-6.3.1
+    GIT_TAG rocm-6.4.1
     OVERRIDE_FIND_PACKAGE
 )
 
 find_package(rocm_smi REQUIRED)
+
+add_executable(arithmetic arithmetic.hip)
+target_link_libraries(arithmetic PRIVATE stdc++_libbacktrace rocm_smi64)
 
 add_executable(memory memory.hip)
 target_link_libraries(memory PRIVATE stdc++_libbacktrace rocm_smi64)
 
 add_executable(shuffle shuffle.hip)
 target_link_libraries(shuffle PRIVATE stdc++_libbacktrace rocm_smi64)
-
