@@ -17,6 +17,12 @@
 #define HAS_DS_F64_ATOMICS 0
 #endif
 
+#if defined(__gfx942__) || defined(__GFX12__)
+#define HAS_DS_PK_ATOMICS 1
+#else
+#define HAS_DS_PK_ATOMICS 0
+#endif
+
 constexpr int trials_per_thread = 256;
 
 template <typename T, int block_size, typename F>
@@ -219,11 +225,31 @@ int main() {
             });
         }
 
-        // TODO: gfx12 and gfx942 also have packed 16-bit floats:
-        // ds_pk_add_f16
-        // ds_pk_add_bf16
-        // ds_pk_add_rtn_f16
-        // ds_pk_add_rtn_bf16
+        // packed f16/bf16
+        if (arch_name.find("gfx942") == 0 || arch_name.find("gfx12") == 0) {
+            test<uint32_t>(exec, "ds_pk_add_f16", [](auto addr, auto data) {
+                #if HAS_DS_PK_ATOMICS
+                asm volatile("ds_pk_add_f16 %0, %1" :: "v"(addr), "v"(data) : "memory");
+                #endif
+            });
+            test<uint32_t>(exec, "ds_pk_add_rtn_f16", [](auto addr, auto data) {
+                #if HAS_DS_PK_ATOMICS
+                uint32_t rtn;
+                asm volatile("ds_pk_add_rtn_f16 %0, %1, %2" : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                #endif
+            });
+            test<uint32_t>(exec, "ds_pk_add_bf16", [](auto addr, auto data) {
+                #if HAS_DS_PK_ATOMICS
+                asm volatile("ds_pk_add_bf16 %0, %1" :: "v"(addr), "v"(data) : "memory");
+                #endif
+            });
+            test<uint32_t>(exec, "ds_pk_add_rtn_bf16", [](auto addr, auto data) {
+                #if HAS_DS_PK_ATOMICS
+                uint32_t rtn;
+                asm volatile("ds_pk_add_rtn_bf16 %0, %1, %2" : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                #endif
+            });
+        }
     } catch (const gpu::error& e) {
         std::cerr << "caught exception: " << e.what() << "\n";
         std::cerr << e.trace << "\n";

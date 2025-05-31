@@ -47,6 +47,12 @@
 #define HAS_GLOBAL_ATOMIC_MIN_F64 0
 #endif
 
+#if defined(__gfx942__) || defined(__GFX12__)
+#define HAS_GLOBAL_ATOMIC_PK_ADD 1
+#else
+#define HAS_GLOBAL_ATOMIC_PK_ADD 0
+#endif
+
 constexpr int trials_per_thread = 64;
 
 template <typename T, int block_size, typename F>
@@ -355,9 +361,31 @@ int main() {
             });
         }
 
-        // TODO: gfx12 and gfx942 also have packed 16-bit floats:
-        // global_atomic_pk_add_f16
-        // global_atomic_pk_add_bf16
+        // packed f16/bf16
+        if (arch_name.find("gfx942") == 0 || arch_name.find("gfx12") == 0) {
+            test<uint32_t>(exec, "global_atomic_pk_add_f16", [](auto addr, auto data) {
+                #if HAS_GLOBAL_ATOMIC_PK_ADD
+                asm volatile("global_atomic_pk_add_f16 %0, %1, off" :: "v"(addr), "v"(data) : "memory");
+                #endif
+            });
+            test<uint32_t>(exec, "global_atomic_pk_add_f16 return", [](auto addr, auto data) {
+                #if HAS_GLOBAL_ATOMIC_PK_ADD
+                uint32_t rtn;
+                asm volatile("global_atomic_pk_add_f16 %0, %1, %2, off " RETURN_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                #endif
+            });
+            test<uint32_t>(exec, "global_atomic_pk_add_bf16", [](auto addr, auto data) {
+                #if HAS_GLOBAL_ATOMIC_PK_ADD
+                asm volatile("global_atomic_pk_add_bf16 %0, %1, off" :: "v"(addr), "v"(data) : "memory");
+                #endif
+            });
+            test<uint32_t>(exec, "global_atomic_pk_add_bf16 return", [](auto addr, auto data) {
+                #if HAS_GLOBAL_ATOMIC_PK_ADD
+                uint32_t rtn;
+                asm volatile("global_atomic_pk_add_bf16 %0, %1, %2, off " RETURN_MODIFIER : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
+                #endif
+            });
+        }
     } catch (const gpu::error& e) {
         std::cerr << "caught exception: " << e.what() << "\n";
         std::cerr << e.trace << "\n";
