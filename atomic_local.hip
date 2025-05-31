@@ -5,6 +5,18 @@
 #include "gpu.hpp"
 #include "benchmark.hpp"
 
+#if defined(__GFX11__) || defined(__GFX12__)
+#define USE_NEW_INSTRUCTION_NAMES 1
+#else
+#define USE_NEW_INSTRUCTION_NAMES 0
+#endif
+
+#if defined(__gfx908__) || defined(__gfx90a__) || defined(__gfx942__)
+#define HAS_DS_F64_ATOMICS 1
+#else
+#define HAS_DS_F64_ATOMICS 0
+#endif
+
 constexpr int trials_per_thread = 256;
 
 template <typename T, int block_size, typename F>
@@ -66,29 +78,32 @@ int main() {
         // the same address. Even this is technically a bank conflict, ds_write/ds_read do not
         // suffer from it, this means that hardware uses some kind of broadcasting in this case.
 
+        const bool use_new_instruction_names =
+            arch_name.find("gfx11") == 0 || arch_name.find("gfx12") == 0;
+
         // uint32
-        if (arch_name.find("gfx9") == 0 || arch_name.find("gfx10") == 0) {
-            test<uint32_t>(exec, "ds_write_b32", [](auto addr, auto data) {
-                #if !(defined(__GFX11__) || defined(__GFX12__))
-                asm volatile("ds_write_b32 %0, %1" :: "v"(addr), "v"(data) : "memory");
-                #endif
-            });
-            test<uint32_t>(exec, "ds_read_b32", [](auto addr, auto data) {
-                #if !(defined(__GFX11__) || defined(__GFX12__))
-                uint32_t rtn;
-                asm volatile("ds_read_b32 %0, %1" : "=&v"(rtn) : "v"(addr) : "memory");
-                #endif
-            });
-        } else {
+        if (use_new_instruction_names) {
             test<uint32_t>(exec, "ds_store_b32", [](auto addr, auto data) {
-                #if (defined(__GFX11__) || defined(__GFX12__))
+                #if USE_NEW_INSTRUCTION_NAMES
                 asm volatile("ds_store_b32 %0, %1" :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint32_t>(exec, "ds_load_b32", [](auto addr, auto data) {
-                #if (defined(__GFX11__) || defined(__GFX12__))
+                #if USE_NEW_INSTRUCTION_NAMES
                 uint32_t rtn;
                 asm volatile("ds_load_b32 %0, %1" : "=&v"(rtn) : "v"(addr) : "memory");
+                #endif
+            });
+        } else {
+            test<uint32_t>(exec, "ds_write_b32", [](auto addr, auto data) {
+                #if !USE_NEW_INSTRUCTION_NAMES
+                asm volatile("ds_write_b32 %0, %1" :: "v"(addr), "v"(data) : "memory");
+                #endif
+            });
+            test<uint32_t>(exec, "ds_read_b32", [](auto addr, auto data) {
+                #if !USE_NEW_INSTRUCTION_NAMES
+                uint32_t rtn;
+                asm volatile("ds_read_b32 %0, %1" : "=&v"(rtn) : "v"(addr) : "memory");
                 #endif
             });
         }
@@ -115,28 +130,28 @@ int main() {
         });
 
         // uint64
-        if (arch_name.find("gfx9") == 0 || arch_name.find("gfx10") == 0) {
-            test<uint64_t>(exec, "ds_write_b64", [](auto addr, auto data) {
-                #if !(defined(__GFX11__) || defined(__GFX12__))
-                asm volatile("ds_write_b64 %0, %1" :: "v"(addr), "v"(data) : "memory");
-                #endif
-            });
-            test<uint64_t>(exec, "ds_read_b64", [](auto addr, auto data) {
-                #if !(defined(__GFX11__) || defined(__GFX12__))
-                uint64_t rtn;
-                asm volatile("ds_read_b64 %0, %1" : "=&v"(rtn) : "v"(addr) : "memory");
-                #endif
-            });
-        } else {
+        if (use_new_instruction_names) {
             test<uint64_t>(exec, "ds_store_b64", [](auto addr, auto data) {
-                #if (defined(__GFX11__) || defined(__GFX12__))
+                #if USE_NEW_INSTRUCTION_NAMES
                 asm volatile("ds_store_b64 %0, %1" :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<uint64_t>(exec, "ds_load_b64", [](auto addr, auto data) {
-                #if (defined(__GFX11__) || defined(__GFX12__))
+                #if USE_NEW_INSTRUCTION_NAMES
                 uint64_t rtn;
                 asm volatile("ds_load_b64 %0, %1" : "=&v"(rtn) : "v"(addr) : "memory");
+                #endif
+            });
+        } else {
+            test<uint64_t>(exec, "ds_write_b64", [](auto addr, auto data) {
+                #if !USE_NEW_INSTRUCTION_NAMES
+                asm volatile("ds_write_b64 %0, %1" :: "v"(addr), "v"(data) : "memory");
+                #endif
+            });
+            test<uint64_t>(exec, "ds_read_b64", [](auto addr, auto data) {
+                #if !USE_NEW_INSTRUCTION_NAMES
+                uint64_t rtn;
+                asm volatile("ds_read_b64 %0, %1" : "=&v"(rtn) : "v"(addr) : "memory");
                 #endif
             });
         }
@@ -181,23 +196,23 @@ int main() {
         // double
         if (arch_name.find("gfx908") == 0 || arch_name.find("gfx90a") == 0 || arch_name.find("gfx942") == 0) {
             test<double>(exec, "ds_add_f64", [](auto addr, auto data) {
-                #if defined(__gfx908__) || defined(__gfx90a__) || defined(__gfx942__)
+                #if HAS_DS_F64_ATOMICS
                 asm volatile("ds_add_f64 %0, %1" :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<double>(exec, "ds_add_rtn_f64", [](auto addr, auto data) {
-                #if defined(__gfx908__) || defined(__gfx90a__) || defined(__gfx942__)
+                #if HAS_DS_F64_ATOMICS
                 double rtn;
                 asm volatile("ds_add_rtn_f64 %0, %1, %2" : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<double>(exec, "ds_max_f64", [](auto addr, auto data) {
-                #if defined(__gfx908__) || defined(__gfx90a__) || defined(__gfx942__)
+                #if HAS_DS_F64_ATOMICS
                 asm volatile("ds_max_f64 %0, %1" :: "v"(addr), "v"(data) : "memory");
                 #endif
             });
             test<double>(exec, "ds_max_rtn_f64", [](auto addr, auto data) {
-                #if defined(__gfx908__) || defined(__gfx90a__) || defined(__gfx942__)
+                #if HAS_DS_F64_ATOMICS
                 double rtn;
                 asm volatile("ds_max_rtn_f64 %0, %1, %2" : "=&v"(rtn) : "v"(addr), "v"(data) : "memory");
                 #endif

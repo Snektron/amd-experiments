@@ -21,6 +21,9 @@ target_link_libraries(arithmetic PRIVATE stdc++_libbacktrace rocm_smi64)
 add_executable(atomic_local atomic_local.hip)
 target_link_libraries(atomic_local PRIVATE stdc++_libbacktrace rocm_smi64)
 
+add_executable(atomic_global atomic_global.hip)
+target_link_libraries(atomic_global PRIVATE stdc++_libbacktrace rocm_smi64)
+
 add_executable(memory memory.hip)
 target_link_libraries(memory PRIVATE stdc++_libbacktrace rocm_smi64)
 
