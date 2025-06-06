@@ -105,7 +105,7 @@ namespace benchmark {
         explicit executor(const gpu::device& dev):
             dev(dev),
             stream(this->dev.create_stream(gpu::stream::flags::non_blocking)),
-            max_cache_size(this->dev.largest_cache_size()),
+            max_cache_size(this->dev.properties.largest_cache_size()),
             cache_buffer(this->dev.alloc<std::byte>(this->max_cache_size))
         {
             AMDSMI_TRY(amdsmi_init(AMDSMI_INIT_AMD_GPUS));

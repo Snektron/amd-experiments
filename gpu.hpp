@@ -258,6 +258,13 @@ namespace gpu {
         }
     };
 
+    enum class cache_level {
+        l1,
+        l2,
+        l3,
+        l4
+    };
+
     struct device {
         // This structure contains a fixed-up version of the device's properties,
         // derived from both the HIP and HSA properties.
@@ -271,11 +278,26 @@ namespace gpu {
             uint32_t simds_per_cu;
             uint32_t simd_width;
             uint32_t cacheline_size;
-            uint32_t l2_cache_size;
             uint32_t clock_rate;
+            uint32_t cache_size[4];
 
             uint32_t total_simds() const {
                 return this->compute_units * this->simds_per_cu;
+            }
+
+            uint32_t get_cache_size(cache_level level) const {
+                return this->cache_size[static_cast<std::underlying_type_t<cache_level>>(level)];
+            }
+
+            uint32_t largest_cache_size() const {
+                for (int i = std::size(this->cache_size) - 1; i >= 0; --i) {
+                    if (this->cache_size[i] != 0) {
+                        return this->cache_size[i];
+                    }
+                }
+                // If we couldn't find the exact size of the largest cache possible,
+                // 256 MB on the MI300.
+                return 256 * 1024 * 1024;
             }
         };
 
@@ -294,7 +316,6 @@ namespace gpu {
             this->properties.arch_name = hip_props.gcnArchName;
             this->properties.total_global_mem = hip_props.totalGlobalMem;
             this->properties.warp_size = hip_props.warpSize;
-            this->properties.l2_cache_size = hip_props.l2CacheSize;
             this->properties.clock_rate = hip_props.clockRate;
 
             this->properties.pci_address = {
@@ -342,6 +363,7 @@ namespace gpu {
             get_hsa_info(HSA_AMD_AGENT_INFO_COMPUTE_UNIT_COUNT, this->properties.compute_units);
             get_hsa_info(HSA_AMD_AGENT_INFO_NUM_SIMDS_PER_CU, this->properties.simds_per_cu);
             get_hsa_info(HSA_AMD_AGENT_INFO_CACHELINE_SIZE, this->properties.cacheline_size);
+            get_hsa_info(HSA_AGENT_INFO_CACHE_SIZE, this->properties.cache_size);
         }
 
         void make_active() const {
@@ -357,14 +379,6 @@ namespace gpu {
         stream create_stream(stream::flags flags = stream::flags::default_flags) const {
             this->make_active();
             return stream(flags);
-        }
-
-        size_t largest_cache_size() const {
-            // Currently, HIP does not have a way to query the size
-            // of infinity cache if it is present. For now, just return
-            // the size of the maximum cache on any device, which is
-            // 256 MiB on MI300X.
-            return 256 * 1024 * 1024;
         }
 
         family_set get_family() const {

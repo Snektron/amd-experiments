@@ -63,7 +63,7 @@ void load(benchmark::executor& exec) {
     const auto read_bytes = reads.to_bytes<T>();
 
     std::cout << "total gmem:       " << benchmark::size(exec.dev.properties.total_global_mem).giga() << " GB\n";
-    std::cout << "l2 cache size:    " << exec.dev.properties.l2_cache_size << '\n';
+    std::cout << "l2 cache size:    " << exec.dev.properties.get_cache_size(gpu::cache_level::l2) << '\n';
     std::cout << "compute units:    " << exec.dev.properties.compute_units << '\n';
     std::cout << "grid size:        " << grid_size << '\n';
     std::cout << "block size:       " << block_size << '\n';
