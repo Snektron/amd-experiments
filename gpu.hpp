@@ -306,7 +306,6 @@ namespace gpu {
             uint32_t simds_per_cu;
             uint32_t simd_width;
             uint32_t cacheline_size;
-            uint32_t clock_rate;
             uint32_t cache_size[4];
 
             uint32_t total_simds() const {
@@ -344,7 +343,6 @@ namespace gpu {
             this->properties.arch_name = hip_props.gcnArchName;
             this->properties.total_global_mem = hip_props.totalGlobalMem;
             this->properties.warp_size = hip_props.warpSize;
-            this->properties.clock_rate = hip_props.clockRate;
 
             this->properties.pci_address = {
                 .domain = static_cast<uint16_t>(hip_props.pciDomainID),

@@ -59,9 +59,8 @@ void test(benchmark::executor& exec, const char* name, F f, int ops_per_inst) {
         stream.launch(cfg, test_kernel<families, block_size, F>, f);
     });
 
-    // TODO: Fetch the actual clock rate?
-    const auto clock_rate = static_cast<double>(exec.dev.properties.clock_rate) * 1000;
-    const auto cycles = clock_rate * std::chrono::duration_cast<std::chrono::duration<double>>(stats.runtime.average).count();
+    const auto clock_rate = stats.clock_rate.average;
+    const auto cycles = clock_rate * std::chrono::duration_cast<std::chrono::duration<double>>(stats.runtime.largest).count();
     const auto latency = cycles / (insts.count / total_simds);
     const auto ops = ops_per_inst * exec.dev.properties.simds_per_cu / latency;
 

@@ -81,16 +81,9 @@ namespace benchmark {
         }                                             \
     }
 
-    template<typename T>
-    struct stats {
-        T average;
-        T stddev;
-        T fastest;
-        T slowest;
-    };
-
     struct benchmark_stats {
-        stats<duration> runtime;
+        statistic<duration> runtime;
+        statistic<double> clock_rate;
     };
 
     struct executor {
@@ -98,8 +91,8 @@ namespace benchmark {
         gpu::stream stream;
         size_t max_cache_size;
         gpu::ptr<std::byte> cache_buffer;
-        amdsmi_processor_handle amdsmi_dev;
 
+        amdsmi_processor_handle amdsmi_dev;
         amdsmi_dev_perf_level_t orig_perf_level = AMDSMI_DEV_PERF_LEVEL_UNKNOWN;
 
         explicit executor(const gpu::device& dev):
@@ -194,33 +187,17 @@ namespace benchmark {
 
             auto durations = std::vector<duration>();
             durations.reserve(iterations);
+            auto clock_rates = std::vector<double>();
+            clock_rates.reserve(iterations);
             for (const auto& [start, stop] : events) {
                 const auto elapsed = std::chrono::duration_cast<duration>(gpu::event::elapsed(start, stop));
                 durations.push_back(elapsed);
+                clock_rates.push_back(this->get_gpu_sclk_freq_mhz());
             }
 
-            const auto [fastest, slowest] = std::ranges::minmax(durations);
-            const auto total = std::ranges::fold_left(durations, duration{0}, std::plus<>{});
-            const auto avg = total.count() / iterations;
-            const auto stddev = std::sqrt(
-                std::ranges::fold_left(
-                    durations
-                        | std::views::transform([&](const auto time) {
-                            const auto diff = time.count() - avg;
-                            return diff * diff;
-                        }),
-                    0.0,
-                    std::plus<>{}
-                ) / iterations
-            );
-
             return {
-                .runtime = {
-                    .average = duration(avg),
-                    .stddev = duration(stddev),
-                    .fastest = fastest,
-                    .slowest = slowest,
-                },
+                .runtime = statistic(durations),
+                .clock_rate = statistic(clock_rates),
             };
         }
     };
