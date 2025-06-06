@@ -4,7 +4,7 @@
 #include "gpu.hpp"
 #include "common.hpp"
 
-#include <rocm_smi/rocm_smi.h>
+#include <amd_smi/amdsmi.h>
 
 #include <chrono>
 #include <vector>
@@ -55,47 +55,52 @@ namespace benchmark {
         }
     };
 
-    struct stats {
-        duration average;
-        duration stddev;
-        duration fastest;
-        duration slowest;
-    };
+    struct amdsmi_error: traced_error {
+        amdsmi_status_t status;
 
-    struct rsmi_error: traced_error {
-        rsmi_status_t status;
-
-        static const char* strerror(rsmi_status_t status) {
+        static const char* strerror(amdsmi_status_t status) {
             const char* errstr;
-            if (rsmi_status_string(status, &errstr) != RSMI_STATUS_SUCCESS) {
+            if (amdsmi_status_code_to_string(status, &errstr) != AMDSMI_STATUS_SUCCESS) {
                 return "(unknown)";
             }
             return errstr;
         }
 
-        explicit rsmi_error(rsmi_status_t status):
+        explicit amdsmi_error(amdsmi_status_t status):
             traced_error("{} ({})", strerror(status), static_cast<int>(status)),
             status(status)
         {
-            assert(status != RSMI_STATUS_SUCCESS);
+            assert(status != AMDSMI_STATUS_SUCCESS);
         }
     };
 
-    #define RSMI_TRY(expr) {                        \
-        const auto _result = (expr);                \
-        if (_result != RSMI_STATUS_SUCCESS) {       \
-            throw ::benchmark::rsmi_error(_result); \
-        }                                           \
+    #define AMDSMI_TRY(expr) {                        \
+        const auto _result = (expr);                  \
+        if (_result != AMDSMI_STATUS_SUCCESS) {       \
+            throw ::benchmark::amdsmi_error(_result); \
+        }                                             \
     }
+
+    template<typename T>
+    struct stats {
+        T average;
+        T stddev;
+        T fastest;
+        T slowest;
+    };
+
+    struct benchmark_stats {
+        stats<duration> runtime;
+    };
 
     struct executor {
         const gpu::device& dev;
         gpu::stream stream;
         size_t max_cache_size;
         gpu::ptr<std::byte> cache_buffer;
-        uint32_t rsmi_dev;
+        amdsmi_processor_handle amdsmi_dev;
 
-        rsmi_dev_perf_level_t orig_perf_level = RSMI_DEV_PERF_LEVEL_UNKNOWN;
+        amdsmi_dev_perf_level_t orig_perf_level = AMDSMI_DEV_PERF_LEVEL_UNKNOWN;
 
         explicit executor(const gpu::device& dev):
             dev(dev),
@@ -103,48 +108,33 @@ namespace benchmark {
             max_cache_size(this->dev.largest_cache_size()),
             cache_buffer(this->dev.alloc<std::byte>(this->max_cache_size))
         {
-            RSMI_TRY(rsmi_init(0));
+            AMDSMI_TRY(amdsmi_init(AMDSMI_INIT_AMD_GPUS));
 
-            // Try to fetch the RSMI device ID from the HIP device
-            // ID. This is relatively janky, see
-            // https://github.com/ROCm/rocm_smi_lib/issues/122#issuecomment-1839991753 and
-            // https://github.com/ROCm/ROCmValidationSuite/blob/eaaaa4e093041a76c6367509dc04b2de2fbf67e2/src/gpu_util.cpp#L436
+            amdsmi_processor_handle amdsmi_dev;
+            const auto addr = amdsmi_bdf_t{
+                .function_number = dev.properties.pci_address.function,
+                .device_number = dev.properties.pci_address.device,
+                .bus_number = dev.properties.pci_address.bus,
+                .domain_number = dev.properties.pci_address.domain,
+            };
+            AMDSMI_TRY(amdsmi_get_processor_handle_from_bdf(addr, &this->amdsmi_dev));
 
-            this->rsmi_dev = [&]{
-                const auto hip_pci_id = this->dev.properties.pci_address.rsmi_id();
-
-                uint32_t num_devices;
-                RSMI_TRY(rsmi_num_monitor_devices(&num_devices));
-                for (uint32_t i = 0; i < num_devices; ++i) {
-                    uint64_t rsmi_pci_id;
-                    RSMI_TRY(rsmi_dev_pci_id_get(i, &rsmi_pci_id));
-
-                    if (rsmi_pci_id == hip_pci_id) {
-                        return i;
-                    }
-                }
-
-                throw traced_error("could not map HIP device id {} to an RSMI device id", this->dev.hip_ordinal);
-            }();
-
-            char dev_name[256] = {0};
-            RSMI_TRY(rsmi_dev_name_get(this->rsmi_dev, dev_name, sizeof(dev_name) - 1));
             std::cout << std::format("benchmarking on device '{}' ({})\n", this->dev.properties.device_name, this->dev.properties.pci_address);
 
             // Try to make performance deterministic
             // First query the current level so that we can reset it later.
-            auto status = rsmi_dev_perf_level_get(this->rsmi_dev, &this->orig_perf_level);
-            if (status != RSMI_STATUS_SUCCESS) {
-                std::cerr << "warning: failed to query current perf level: " << rsmi_error::strerror(status) << "\n";
+            auto status = amdsmi_get_gpu_perf_level(this->amdsmi_dev, &this->orig_perf_level);
+            if (status != AMDSMI_STATUS_SUCCESS) {
+                std::cerr << "warning: failed to query current perf level: " << amdsmi_error::strerror(status) << "\n";
             }
 
             // "Determinism" mode doesn't always work, so use stable peak instead.
             // TODO: Should we set the profile too?
-            status = rsmi_dev_perf_level_set_v1(this->rsmi_dev, RSMI_DEV_PERF_LEVEL_STABLE_PEAK);
-            if (status == RSMI_STATUS_PERMISSION) {
+            status = amdsmi_set_gpu_perf_level(this->amdsmi_dev, AMDSMI_DEV_PERF_LEVEL_STABLE_PEAK);
+            if (status == AMDSMI_STATUS_NO_PERM) {
                 std::cerr << "warning: could not set perf level: insufficient permissions\n";
-            } else if (status != RSMI_STATUS_SUCCESS) {
-                std::cerr << "warning: failed to set perf level: " << rsmi_error::strerror(status) << "\n";
+            } else if (status != AMDSMI_STATUS_SUCCESS) {
+                std::cerr << "warning: failed to set perf level: " << amdsmi_error::strerror(status) << "\n";
             }
         }
 
@@ -155,23 +145,33 @@ namespace benchmark {
         executor& operator=(executor&&) = delete;
 
         ~executor() {
-            if (this->orig_perf_level != RSMI_DEV_PERF_LEVEL_UNKNOWN) {
-                rsmi_dev_perf_level_t current_level;
-                auto status = rsmi_dev_perf_level_get(this->rsmi_dev, &current_level);
-                if (status == RSMI_STATUS_SUCCESS && current_level != this->orig_perf_level) {
-                    status = rsmi_dev_perf_level_set_v1(this->rsmi_dev, this->orig_perf_level);
-                    if (status != RSMI_STATUS_SUCCESS ) {
-                        std::cerr << "warning: failed to reset current perf level: " << rsmi_error::strerror(status) << "\n";
+            if (this->orig_perf_level != AMDSMI_DEV_PERF_LEVEL_UNKNOWN) {
+                amdsmi_dev_perf_level_t current_level;
+                auto status = amdsmi_get_gpu_perf_level(this->amdsmi_dev, &current_level);
+                if (status == AMDSMI_STATUS_SUCCESS && current_level != this->orig_perf_level) {
+                    status = amdsmi_set_gpu_perf_level(this->amdsmi_dev, this->orig_perf_level);
+                    if (status != AMDSMI_STATUS_SUCCESS ) {
+                        std::cerr << "warning: failed to reset current perf level: " << amdsmi_error::strerror(status) << "\n";
                     }
                 }
             }
 
+            assert(amdsmi_shut_down() == AMDSMI_STATUS_SUCCESS);
+        }
 
-            assert(rsmi_shut_down() == RSMI_STATUS_SUCCESS);
+        uint64_t get_gpu_sclk_freq_mhz() const {
+            amdsmi_frequencies_t freqs;
+            AMDSMI_TRY(amdsmi_get_clk_freq(
+                this->amdsmi_dev,
+                AMDSMI_CLK_TYPE_GFX,
+                &freqs
+            ));
+
+            return freqs.frequency[freqs.current];
         }
 
         template <typename F>
-        stats bench(F f) {
+        benchmark_stats bench(F f) {
             using ns = std::chrono::nanoseconds;
 
             auto events = std::vector<std::pair<gpu::event, gpu::event>>(iterations);
@@ -215,10 +215,12 @@ namespace benchmark {
             );
 
             return {
-                .average = duration(avg),
-                .stddev = duration(stddev),
-                .fastest = fastest,
-                .slowest = slowest,
+                .runtime = {
+                    .average = duration(avg),
+                    .stddev = duration(stddev),
+                    .fastest = fastest,
+                    .slowest = slowest,
+                },
             };
         }
     };

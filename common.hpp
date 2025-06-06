@@ -28,12 +28,11 @@ struct pci_address {
     uint8_t device;
     uint8_t function;
 
-    constexpr uint64_t rsmi_id() const {
-        return (this->domain << 13) | (this->bus << 8) | (this->device << 3) | this->function;
-    }
-
     constexpr bool operator==(const pci_address& other) const {
-        return this->rsmi_id() == other.rsmi_id();
+        return this->domain == other.domain
+            && this->bus == other.bus
+            && this->device == other.device
+            && this->function == other.function;
     }
 
     constexpr bool operator!=(const pci_address& other) const {

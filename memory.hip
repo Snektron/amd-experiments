@@ -83,10 +83,10 @@ void load(benchmark::executor& exec) {
         stream.launch(cfg, load_kernel<T, block_size, items_per_thread>, buffer.raw);
     });
 
-    std::cout << "time per launch: " << std::chrono::duration_cast<std::chrono::microseconds>(stats.average)
-        << " +- " << std::chrono::duration_cast<std::chrono::microseconds>(stats.stddev) << "\n";
-    std::cout << "throughput:      " << benchmark::throughput(reads, stats.average).giga() << " Gitems/s\n";
-    std::cout << "throughput:      " << benchmark::throughput(read_bytes, stats.average).giga() << " GB/s\n";
+    std::cout << "time per launch: " << std::chrono::duration_cast<std::chrono::microseconds>(stats.runtime.average)
+        << " +- " << std::chrono::duration_cast<std::chrono::microseconds>(stats.runtime.stddev) << "\n";
+    std::cout << "throughput:      " << benchmark::throughput(reads, stats.runtime.average).giga() << " Gitems/s\n";
+    std::cout << "throughput:      " << benchmark::throughput(read_bytes, stats.runtime.average).giga() << " GB/s\n";
     std::cout << '\n';
 }
 

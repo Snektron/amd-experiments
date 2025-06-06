@@ -6,19 +6,12 @@ set(CMAKE_HIP_STANDARD 23)
 
 include(FetchContent)
 
-FetchContent_Declare(
-    rocm_smi
-    GIT_REPOSITORY https://github.com/ROCm/rocm_smi_lib
-    GIT_TAG rocm-6.4.1
-    OVERRIDE_FIND_PACKAGE
-)
-
-find_package(rocm_smi REQUIRED)
+find_package(amd_smi REQUIRED)
 find_package(hsa-runtime64 REQUIRED)
 
 function(add_experiment NAME SOURCES)
     add_executable(${NAME} ${SOURCES})
-    target_link_libraries(${NAME} PRIVATE stdc++_libbacktrace rocm_smi64 hsa-runtime64)
+    target_link_libraries(${NAME} PRIVATE stdc++_libbacktrace amd_smi hsa-runtime64)
 endfunction()
 
 add_experiment(arithmetic arithmetic.hip)

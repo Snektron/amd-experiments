@@ -61,15 +61,15 @@ void test(benchmark::executor& exec, const char* name, F f, int ops_per_inst) {
 
     // TODO: Fetch the actual clock rate?
     const auto clock_rate = static_cast<double>(exec.dev.properties.clock_rate) * 1000;
-    const auto cycles = clock_rate * std::chrono::duration_cast<std::chrono::duration<double>>(stats.average).count();
+    const auto cycles = clock_rate * std::chrono::duration_cast<std::chrono::duration<double>>(stats.runtime.average).count();
     const auto latency = cycles / (insts.count / total_simds);
     const auto ops = ops_per_inst * exec.dev.properties.simds_per_cu / latency;
 
     std::cout << name << ":\n";
-    std::cout << "  time per launch: " << std::chrono::duration_cast<std::chrono::microseconds>(stats.average)
-        << " +- " << std::chrono::duration_cast<std::chrono::microseconds>(stats.stddev) << "\n";
-    std::cout << "  throughput:      " << benchmark::throughput(insts, stats.average).giga() << " GOPS\n";
-    std::cout << "  throughput:      " << benchmark::throughput(flop, stats.average).tera() << " TFLOPS\n";
+    std::cout << "  time per launch: " << std::chrono::duration_cast<std::chrono::microseconds>(stats.runtime.average)
+        << " +- " << std::chrono::duration_cast<std::chrono::microseconds>(stats.runtime.stddev) << "\n";
+    std::cout << "  throughput:      " << benchmark::throughput(insts, stats.runtime.average).giga() << " GOPS\n";
+    std::cout << "  throughput:      " << benchmark::throughput(flop, stats.runtime.average).tera() << " TFLOPS\n";
     std::cout << "  latency:         " << latency << " cycles/inst\n";
     std::cout << "  ops per cu:      " << ops << " ops/CU/cycle\n";
 }

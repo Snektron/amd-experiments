@@ -47,10 +47,10 @@ void test(benchmark::executor& exec, const char* name, F f) {
     });
 
     std::cout << name << ":\n";
-    std::cout << "  time per launch: " << std::chrono::duration_cast<std::chrono::microseconds>(stats.average)
-        << " +- " << std::chrono::duration_cast<std::chrono::microseconds>(stats.stddev) << "\n";
-    std::cout << "  throughput:      " << benchmark::throughput(size, stats.average).tera() << " TOPS ("
-       << benchmark::throughput(size_bytes, stats.average).tera() << " TB/s)\n";
+    std::cout << "  time per launch: " << std::chrono::duration_cast<std::chrono::microseconds>(stats.runtime.average)
+        << " +- " << std::chrono::duration_cast<std::chrono::microseconds>(stats.runtime.stddev) << "\n";
+    std::cout << "  throughput:      " << benchmark::throughput(size, stats.runtime.average).tera() << " TOPS ("
+       << benchmark::throughput(size_bytes, stats.runtime.average).tera() << " TB/s)\n";
 }
 
 int main() {
