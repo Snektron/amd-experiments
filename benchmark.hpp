@@ -89,8 +89,7 @@ namespace benchmark {
     }
 
     struct executor {
-        gpu::device dev;
-        gpu::device_properties dev_props;
+        const gpu::device& dev;
         gpu::stream stream;
         size_t max_cache_size;
         gpu::ptr<std::byte> cache_buffer;
@@ -98,9 +97,8 @@ namespace benchmark {
 
         rsmi_dev_perf_level_t orig_perf_level = RSMI_DEV_PERF_LEVEL_UNKNOWN;
 
-        explicit executor(gpu::device dev):
+        explicit executor(const gpu::device& dev):
             dev(dev),
-            dev_props(this->dev.get_properties()),
             stream(this->dev.create_stream(gpu::stream::flags::non_blocking)),
             max_cache_size(this->dev.largest_cache_size()),
             cache_buffer(this->dev.alloc<std::byte>(this->max_cache_size))

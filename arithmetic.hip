@@ -19,7 +19,7 @@ void test_kernel(F f) {
 template<typename F>
 void test(benchmark::executor& exec, const char* name, F f) {
     constexpr auto block_size = 256;
-    const auto grid_size = 1024 * exec.dev_props.multiProcessorCount;
+    const auto grid_size = 1024 * exec.dev.properties.multiProcessorCount;
     const auto size = benchmark::size(trials_per_thread * block_size * grid_size);
     const auto size_bytes = size.to_bytes<int>();
 
@@ -37,14 +37,14 @@ void test(benchmark::executor& exec, const char* name, F f) {
         << " +- " << std::chrono::duration_cast<std::chrono::microseconds>(stats.stddev) << "\n";
     std::cout << "  throughput:      " << benchmark::throughput(size, stats.average).tera() << " TOPS ("
        << benchmark::throughput(size_bytes, stats.average).tera() << " TB/s)\n";
-    std::cout << "  cycles:          " << (double(exec.dev_props.clockRate) * 1000 * exec.dev_props.multiProcessorCount * 4 * exec.dev_props.warpSize) / benchmark::throughput(size, stats.fastest).rate << "\n";
+    std::cout << "  cycles:          " << (double(exec.dev.properties.clockRate) * 1000 * exec.dev.properties.multiProcessorCount * 4 * exec.dev.properties.warpSize) / benchmark::throughput(size, stats.fastest).rate << "\n";
 }
 
 int main() {
     std::cout << std::fixed << std::setprecision(2);
 
     try {
-        auto exec = benchmark::executor(gpu::default_device);
+        auto exec = benchmark::executor(gpu::get_default_device());
         test(exec, "mov", [] {
             asm volatile("v_mov_b32 v0, v1" ::: "v0", "v1");
         });

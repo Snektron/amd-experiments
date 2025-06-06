@@ -32,8 +32,8 @@ void test_kernel(F f) {
 template<typename F>
 void test(benchmark::executor& exec, const char* name, F f) {
     constexpr auto block_size = 1024;
-    const auto grid_size = 4096 * exec.dev_props.multiProcessorCount;
-    const auto warp_size = exec.dev_props.warpSize;
+    const auto grid_size = 4096 * exec.dev.properties.multiProcessorCount;
+    const auto warp_size = exec.dev.properties.warpSize;
     const auto size = benchmark::size(warp_size * trails_per_thread * block_size * grid_size);
     const auto size_bytes = size.to_bytes<int>();
 
@@ -57,7 +57,7 @@ int main() {
     std::cout << std::fixed << std::setprecision(2);
 
     try {
-        auto exec = benchmark::executor(gpu::default_device);
+        auto exec = benchmark::executor(gpu::get_default_device());
         test(exec, "mov", [] {
             asm volatile("v_mov_b32 v0, v1" ::: "v0", "v1");
         });

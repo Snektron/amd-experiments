@@ -172,10 +172,14 @@ namespace gpu {
 
     struct device {
         int ordinal;
+        // Fetching the properties is relatively slow, so just cache them in this structure.
+        device_properties properties;
 
-        constexpr explicit device(int ordinal):
+        explicit device(int ordinal):
             ordinal(ordinal)
-        { }
+        {
+            GPU_TRY(hipGetDeviceProperties(&this->properties, this->ordinal));
+        }
 
         void make_active() const {
             GPU_TRY(hipSetDevice(this->ordinal));
@@ -190,12 +194,6 @@ namespace gpu {
         stream create_stream(stream::flags flags = stream::flags::default_flags) const {
             this->make_active();
             return stream(flags);
-        }
-
-        device_properties get_properties() const {
-            hipDeviceProp_t props;
-            GPU_TRY(hipGetDeviceProperties(&props, this->ordinal));
-            return props;
         }
 
         size_t largest_cache_size() const {
@@ -222,13 +220,19 @@ namespace gpu {
             };
         }
 
+        arch_family get_family() const {
+
+        }
+
         void sync() const {
             this->make_active();
             GPU_TRY(hipDeviceSynchronize());
         }
     };
 
-    constexpr const static auto default_device = device(0);
+    static device get_default_device() {
+        return device(0);
+    }
 }
 
 template<>
