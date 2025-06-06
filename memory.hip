@@ -92,7 +92,9 @@ void load(benchmark::executor& exec) {
 
 int main() {
     try {
-        auto exec = benchmark::executor(gpu::get_default_device());
+        const auto dev = gpu::get_default_device();
+        auto exec = benchmark::executor(dev);
+
         load<int, 64, 16>(exec);
         load<int, 64, 32>(exec);
         load<int, 128, 16>(exec);

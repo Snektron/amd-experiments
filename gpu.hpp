@@ -159,14 +159,83 @@ namespace gpu {
 
     using device_properties = hipDeviceProp_t;
 
-    struct pci_address {
-        uint16_t domain;
-        uint8_t bus;
-        uint8_t device;
-        uint8_t function;
+    struct family_set {
+        enum bits {
+            none = 0x0,
 
-        uint64_t rsmi_id() const {
-            return (this->domain << 13) | (this->bus << 8) | (this->device << 3) | this->function;
+            gcn5 = 0x1,
+
+            rdna1 = 0x2,
+            rdna2 = 0x4,
+            rdna3 = 0x8,
+            rdna4 = 0x10,
+
+            cdna1 = 0x20,
+            cdna2 = 0x40,
+            cdna3 = 0x80,
+
+            all = (cdna3 << 1) - 1
+        };
+
+        using backing_type = std::underlying_type_t<bits>;
+
+        bits families;
+
+        constexpr family_set(bits families): families(families) {}
+
+        constexpr bool operator==(const family_set& other) const {
+            return this->families == other.families;
+        }
+
+        constexpr bool operator!=(const family_set& other) const {
+            return !(*this == other);
+        }
+
+        template <typename F>
+        __host__ __device__
+        constexpr static family_set unop(family_set a, F f) {
+            return static_cast<bits>(f(static_cast<backing_type>(a.families)));
+        }
+
+        constexpr family_set operator~() const {
+            return unop(*this, [](auto a) { return ~a & bits::all; });
+        }
+
+        template <typename F>
+        __host__ __device__
+        constexpr static family_set binop(family_set a, family_set b, F f) {
+            return static_cast<bits>(f(static_cast<backing_type>(a.families), static_cast<backing_type>(b.families)));
+        }
+
+        constexpr family_set operator|(family_set other) const {
+            return binop(*this, other, [](auto a, auto b) { return a | b; });
+        }
+
+        constexpr family_set& operator|=(family_set other) {
+            *this = binop(*this, other, [](auto a, auto b) { return a | b; });
+            return *this;
+        }
+
+        constexpr family_set operator&(family_set other) const {
+            return binop(*this, other, [](auto a, auto b) { return a & b; });
+        }
+
+        constexpr family_set& operator&(family_set other) {
+            *this = binop(*this, other, [](auto a, auto b) { return a & b; });
+            return *this;
+        }
+
+        constexpr family_set operator^(family_set other) const {
+            return binop(*this, other, [](auto a, auto b) { return a ^ b; });
+        }
+
+        constexpr family_set& operator^(family_set other) {
+            *this = binop(*this, other, [](auto a, auto b) { return a ^ b; });
+            return *this;
+        }
+
+        constexpr bool contains(family_set other) const {
+            return (*this & other) == other;
         }
     };
 
@@ -220,8 +289,27 @@ namespace gpu {
             };
         }
 
-        arch_family get_family() const {
+        family_set get_family() const {
+            const std::string_view arch_name = this->properties.gcnArchName;
+            if (arch_name.starts_with("gfx12")) {
+                return family_set::rdna4;
+            } else if (arch_name.starts_with("gfx11")) {
+                return family_set::rdna3;
+            } else if (arch_name.starts_with("gfx103")) {
+                return family_set::rdna2;
+            } else if (arch_name.starts_with("gfx101")) {
+                return family_set::rdna1;
+            } else if (arch_name.starts_with("gfx94") || arch_name.starts_with("gfx95")) {
+                return family_set::cdna3;
+            } else if (arch_name.starts_with("gfx90a")) {
+                return family_set::cdna2;
+            } else if (arch_name.starts_with("gfx908")) {
+                return family_set::cdna1;
+            } else if (arch_name.starts_with("gfx9")) {
+                return family_set::gcn5;
+            }
 
+            return family_set::none;
         }
 
         void sync() const {

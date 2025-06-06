@@ -44,7 +44,8 @@ int main() {
     std::cout << std::fixed << std::setprecision(2);
 
     try {
-        auto exec = benchmark::executor(gpu::get_default_device());
+        const auto dev = gpu::get_default_device();
+        auto exec = benchmark::executor(dev);
         test(exec, "mov", [] {
             asm volatile("v_mov_b32 v0, v1" ::: "v0", "v1");
         });

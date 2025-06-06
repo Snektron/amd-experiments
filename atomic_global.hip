@@ -116,7 +116,8 @@ int main() {
     std::cout << std::fixed << std::setprecision(2);
 
     try {
-        auto exec = benchmark::executor(gpu::get_default_device());
+        const auto dev = gpu::get_default_device();
+        auto exec = benchmark::executor(dev);
 
         const std::string arch_name{exec.dev.properties.gcnArchName};
 
