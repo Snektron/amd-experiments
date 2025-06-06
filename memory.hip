@@ -20,13 +20,19 @@ void load_kernel(T* __restrict__ buffer) {
     auto offset = bid * block_dim * items_per_thread + wid * wim * items_per_thread + lid * 4;
     const auto* ptr = buffer + offset;
 
+    #ifdef GPU_FAMILY_CDNA3
+        #define ATTRS " nt"
+    #else
+        #define ATTRS " glc slc"
+    #endif
+
     if constexpr (items_per_thread == 16) {
         __uint128_t a, b, c, d;
         asm volatile(
-            "global_load_dwordx4 %0, %4 off glc slc\n\t"
-            "global_load_dwordx4 %1, %4 off offset:1024 glc slc\n\t"
-            "global_load_dwordx4 %2, %4 off offset:2048 glc slc\n\t"
-            "global_load_dwordx4 %3, %4 off offset:3072 glc slc\n\t"
+            "global_load_dwordx4 %0, %4 off " ATTRS "\n\t"
+            "global_load_dwordx4 %1, %4 off offset:1024 " ATTRS "\n\t"
+            "global_load_dwordx4 %2, %4 off offset:2048 " ATTRS "\n\t"
+            "global_load_dwordx4 %3, %4 off offset:3072 " ATTRS "\n\t"
             "s_waitcnt vmcnt(0)"
             : "=&v"(a), "=&v"(b), "=&v"(c), "=&v"(d)
             : "v"(ptr)
@@ -35,14 +41,14 @@ void load_kernel(T* __restrict__ buffer) {
         __uint128_t a, b, c, d;
         __uint128_t e, f, g, h;
         asm volatile(
-            "global_load_dwordx4 %0, %8 off offset:-4096 glc slc\n\t"
-            "global_load_dwordx4 %1, %8 off offset:-3072 glc slc\n\t"
-            "global_load_dwordx4 %2, %8 off offset:-2048 glc slc\n\t"
-            "global_load_dwordx4 %3, %8 off offset:-1024 glc slc\n\t"
-            "global_load_dwordx4 %4, %8 off offset:0000 glc slc\n\t"
-            "global_load_dwordx4 %5, %8 off offset:1024 glc slc\n\t"
-            "global_load_dwordx4 %6, %8 off offset:2048 glc slc\n\t"
-            "global_load_dwordx4 %7, %8 off offset:3072 glc slc\n\t"
+            "global_load_dwordx4 %0, %8 off offset:-4096 " ATTRS "\n\t"
+            "global_load_dwordx4 %1, %8 off offset:-3072 " ATTRS "\n\t"
+            "global_load_dwordx4 %2, %8 off offset:-2048 " ATTRS "\n\t"
+            "global_load_dwordx4 %3, %8 off offset:-1024 " ATTRS "\n\t"
+            "global_load_dwordx4 %4, %8 off offset:0000 " ATTRS "\n\t"
+            "global_load_dwordx4 %5, %8 off offset:1024 " ATTRS "\n\t"
+            "global_load_dwordx4 %6, %8 off offset:2048 " ATTRS "\n\t"
+            "global_load_dwordx4 %7, %8 off offset:3072 " ATTRS "\n\t"
             "s_waitcnt vmcnt(0)"
             : "=&v"(a), "=&v"(b), "=&v"(c), "=&v"(d), "=&v"(e), "=&v"(f), "=&v"(g), "=&v"(h)
             : "v"(ptr + 1024)

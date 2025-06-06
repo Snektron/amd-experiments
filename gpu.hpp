@@ -24,6 +24,34 @@
     }                                    \
 }
 
+#if defined(__gfx942__) || defined(__gfx950__) || defined(__gfx9_4_generic__)
+    #define GPU_FAMILY_CDNA3
+#elif defined(__gfx90a__)
+    #define GPU_FAMILY_CDNA2
+#elif defined(__gfx908__)
+    #define GPU_FAMILY_CDNA1
+#elif defined(__gfx900__) || defined(__gfx902__) || defined(__gfx904__) || defined(__gfx906__) \
+    || defined(__gfx90c__) || defined(__gfx9_generic__)
+    #define GPU_FAMILY_GCN5
+#elif defined(__GFX12__) || defined(__gfx12_generic__)
+    #define GPU_FAMILY_RDNA4
+#elif defined(__GFX11__) || defined(__gfx11_generic__)
+    #define GPU_FAMILY_RDNA3
+#elif defined(__gfx1030__) || defined(__gfx1031__) || defined(__gfx1032__) || defined(__gfx1033__) \
+    || defined(__gfx1034__) || defined(__gfx1035__) || defined(__gfx1036__)                        \
+    || defined(__gfx10_3_generic__)
+    #define GPU_FAMILY_RDNA2
+#elif defined(__gfx1010__) || defined(__gfx1011__) || defined(__gfx1012__) || defined(__gfx1013__) \
+    || defined(__gfx10_1_generic__)
+    #define GPU_FAMILY_RDNA1
+#elif defined(__SPIRV__)
+    #define GPU_FAMILY_SPIRV
+#elif defined(__HIP_DEVICE_COMPILE__)
+    // Double check the build target for typos otherwise please submit an issue or pull request!
+    #error "unknown build target"
+#endif
+
+
 namespace gpu {
     struct error: traced_error {
         hipError_t status;
@@ -417,34 +445,26 @@ namespace gpu {
     __device__
     constexpr family_set get_device_family() {
         // See https://llvm.org/docs/AMDGPUUsage.html#instructions
-        #if defined(__gfx942__) || defined(__gfx950__) || defined(__gfx9_4_generic__)
+        #ifdef GPU_FAMILY_CDNA3
             return family_set::cdna3;
-        #elif defined(__gfx90a__)
+        #elifdef GPU_FAMILY_CDNA2
             return family_set::cdna2;
-        #elif defined(__gfx908__)
+        #elifdef GPU_FAMILY_CDNA1
             return family_set::cdna1;
-        #elif defined(__gfx900__) || defined(__gfx902__) || defined(__gfx904__) || defined(__gfx906__) \
-            || defined(__gfx90c__) || defined(__gfx9_generic__)
+        #elifdef GPU_FAMILY_GCN5
             return family_set::gcn5;
-        #elif defined(__GFX12__) || defined(__gfx12_generic__)
+        #elifdef GPU_FAMILY_RDNA4
             return family_set::rdna4;
-        #elif defined(__GFX11__) || defined(__gfx11_generic__)
+        #elifdef GPU_FAMILY_RDNA3
             return family_set::rdna3;
-        #elif defined(__gfx1030__) || defined(__gfx1031__) || defined(__gfx1032__) || defined(__gfx1033__) \
-            || defined(__gfx1034__) || defined(__gfx1035__) || defined(__gfx1036__)                        \
-            || defined(__gfx10_3_generic__)
+        #elifdef GPU_FAMILY_RDNA2
             return family_set::rdna2;
-        #elif defined(__gfx1010__) || defined(__gfx1011__) || defined(__gfx1012__) || defined(__gfx1013__) \
-            || defined(__gfx10_1_generic__)
+        #elifdef GPU_FAMILY_RDNA1
             return family_set::rdna1;
-        #elif defined(__SPIRV__)
+        #elifdef GPU_FAMILY_SPIRV
             return family_set::none; // For now
-            #define ROCPRIM_TARGET_SPIRV 1
-        #elif defined(__HIP_DEVICE_COMPILE__)
-            // Double check the build target for typos otherwise please submit an issue or pull request!
-            #warning "unknown build target"
         #else
-            // Make the compiler happy (this path is not reachable on host)
+            // Make the compiler happy (this path is not reachable)
             return family_set::none;
         #endif
     }
