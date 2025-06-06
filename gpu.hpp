@@ -4,6 +4,8 @@
 #include "common.hpp"
 
 #include <hip/hip_runtime.h>
+#include <hsa/hsa.h>
+#include <hsa/hsa_ext_amd.h>
 #include <format>
 #include <cstddef>
 #include <cassert>
@@ -15,15 +17,34 @@
     }                                \
 }
 
+#define HSA_TRY(expr) {                  \
+    const auto _result = (expr);         \
+    if (_result != HSA_STATUS_SUCCESS) { \
+        throw ::gpu::error(_result);     \
+    }                                    \
+}
+
 namespace gpu {
     struct error: traced_error {
         hipError_t status;
+
+        static const char* get_hsa_strerror(hsa_status_t status) {
+            const char* msg;
+            assert(hsa_status_string(status, &msg) == HSA_STATUS_SUCCESS);
+            return msg;
+        }
 
         error(hipError_t status):
             traced_error("{} ({})", hipGetErrorString(status), static_cast<int>(status)),
             status(status)
         {
             assert(status != hipSuccess);
+        }
+
+        error(hsa_status_t status):
+            traced_error("{} ({})", get_hsa_strerror(status), static_cast<int>(status))
+        {
+            assert(status != HSA_STATUS_SUCCESS);
         }
     };
 
@@ -157,8 +178,6 @@ namespace gpu {
         }
     };
 
-    using device_properties = hipDeviceProp_t;
-
     struct family_set {
         enum bits {
             none = 0x0,
@@ -240,18 +259,93 @@ namespace gpu {
     };
 
     struct device {
-        int ordinal;
-        // Fetching the properties is relatively slow, so just cache them in this structure.
-        device_properties properties;
+        // This structure contains a fixed-up version of the device's properties,
+        // derived from both the HIP and HSA properties.
+        struct properties {
+            std::string device_name;
+            std::string arch_name;
+            pci_address pci_address;
+            uint64_t total_global_mem;
+            uint32_t warp_size;
+            uint32_t compute_units;
+            uint32_t simds_per_cu;
+            uint32_t simd_width;
+            uint32_t cacheline_size;
+            uint32_t l2_cache_size;
+            uint32_t clock_rate;
 
-        explicit device(int ordinal):
-            ordinal(ordinal)
+            uint32_t total_simds() const {
+                return this->compute_units * this->simds_per_cu;
+            }
+        };
+
+        int hip_ordinal;
+        hsa_agent_t hsa_agent;
+        // Fetching the properties is relatively slow, so just cache them in this structure.
+        properties properties;
+
+        explicit device(int hip_ordinal):
+            hip_ordinal(hip_ordinal)
         {
-            GPU_TRY(hipGetDeviceProperties(&this->properties, this->ordinal));
+            hipDeviceProp_t hip_props;
+            GPU_TRY(hipGetDeviceProperties(&hip_props, this->hip_ordinal));
+
+            this->properties.device_name = hip_props.name;
+            this->properties.arch_name = hip_props.gcnArchName;
+            this->properties.total_global_mem = hip_props.totalGlobalMem;
+            this->properties.warp_size = hip_props.warpSize;
+            this->properties.l2_cache_size = hip_props.l2CacheSize;
+            this->properties.clock_rate = hip_props.clockRate;
+
+            this->properties.pci_address = {
+                .domain = static_cast<uint16_t>(hip_props.pciDomainID),
+                .bus = static_cast<uint8_t>(hip_props.pciBusID),
+                .device = static_cast<uint8_t>(hip_props.pciDeviceID),
+                .function = static_cast<uint8_t>(0), // There is no pciFunctionID, so presumably its always 0?
+            };
+
+            const auto iterate = [](hsa_agent_t agent, void* data) {
+                auto& dev = *reinterpret_cast<device*>(data);
+                hsa_status_t status;
+                uint32_t pci_domain_id;
+                status = hsa_agent_get_info(agent, static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_DOMAIN), &pci_domain_id);
+                if (status != HSA_STATUS_SUCCESS) return status;
+
+                uint32_t pci_bfd_id;
+                status = hsa_agent_get_info(agent, static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_BDFID), &pci_bfd_id);
+                if (status != HSA_STATUS_SUCCESS) return status;
+
+                const auto hsa_addr = pci_address {
+                    .domain = static_cast<uint16_t>(pci_domain_id & 0xFFFF),
+                    .bus = static_cast<uint8_t>((pci_bfd_id >> 8) & ((1 << 8) - 1)),
+                    .device = static_cast<uint8_t>((pci_bfd_id >> 3) & ((1 << 5) - 1)),
+                    .function = static_cast<uint8_t>(pci_bfd_id & ((1 << 3) - 1)),
+                };
+
+                if (hsa_addr == dev.properties.pci_address) {
+                    dev.hsa_agent = agent;
+                    return HSA_STATUS_INFO_BREAK;
+                }
+
+                return HSA_STATUS_SUCCESS;
+            };
+
+            const auto status = hsa_iterate_agents(iterate, reinterpret_cast<void*>(this));
+            if (status != HSA_STATUS_INFO_BREAK) {
+                throw traced_error("could not map HIP device id {} to a HSA device", this->hip_ordinal);
+            }
+
+            const auto get_hsa_info = [&](const auto field, auto& value) {
+                HSA_TRY(hsa_agent_get_info(this->hsa_agent, static_cast<hsa_agent_info_t>(field), &value));
+            };
+
+            get_hsa_info(HSA_AMD_AGENT_INFO_COMPUTE_UNIT_COUNT, this->properties.compute_units);
+            get_hsa_info(HSA_AMD_AGENT_INFO_NUM_SIMDS_PER_CU, this->properties.simds_per_cu);
+            get_hsa_info(HSA_AMD_AGENT_INFO_CACHELINE_SIZE, this->properties.cacheline_size);
         }
 
         void make_active() const {
-            GPU_TRY(hipSetDevice(this->ordinal));
+            GPU_TRY(hipSetDevice(this->hip_ordinal));
         }
 
         template <typename T>
@@ -273,24 +367,8 @@ namespace gpu {
             return 256 * 1024 * 1024;
         }
 
-        pci_address get_pci_bus_id() const {
-            char pci_string[256] = {0};
-            GPU_TRY(hipDeviceGetPCIBusId(pci_string, sizeof(pci_string) - 1, this->ordinal));
-            pci_address addr;
-            unsigned int dom, bus, dev, func;
-            if (std::sscanf(pci_string, "%04x:%02x:%02x.%01x", &dom, &bus, &dev, &func) != 4) {
-                throw traced_error("could not parse GPU {} PCI id '{}'", this->ordinal, pci_string);
-            }
-            return {
-                .domain = static_cast<uint16_t>(dom),
-                .bus = static_cast<uint8_t>(bus),
-                .device = static_cast<uint8_t>(dev),
-                .function = static_cast<uint8_t>(func),
-            };
-        }
-
         family_set get_family() const {
-            const std::string_view arch_name = this->properties.gcnArchName;
+            const auto arch_name = this->properties.arch_name;
             if (arch_name.starts_with("gfx12")) {
                 return family_set::rdna4;
             } else if (arch_name.starts_with("gfx11")) {
@@ -321,25 +399,41 @@ namespace gpu {
     static device get_default_device() {
         return device(0);
     }
+
+    __device__
+    constexpr family_set get_device_family() {
+        // See https://llvm.org/docs/AMDGPUUsage.html#instructions
+        #if defined(__gfx942__) || defined(__gfx950__) || defined(__gfx9_4_generic__)
+            return family_set::cdna3;
+        #elif defined(__gfx90a__)
+            return family_set::cdna2;
+        #elif defined(__gfx908__)
+            return family_set::cdna1;
+        #elif defined(__gfx900__) || defined(__gfx902__) || defined(__gfx904__) || defined(__gfx906__) \
+            || defined(__gfx90c__) || defined(__gfx9_generic__)
+            return family_set::gcn5;
+        #elif defined(__GFX12__) || defined(__gfx12_generic__)
+            return family_set::rdna4;
+        #elif defined(__GFX11__) || defined(__gfx11_generic__)
+            return family_set::rdna3;
+        #elif defined(__gfx1030__) || defined(__gfx1031__) || defined(__gfx1032__) || defined(__gfx1033__) \
+            || defined(__gfx1034__) || defined(__gfx1035__) || defined(__gfx1036__)                        \
+            || defined(__gfx10_3_generic__)
+            return family_set::rdna2;
+        #elif defined(__gfx1010__) || defined(__gfx1011__) || defined(__gfx1012__) || defined(__gfx1013__) \
+            || defined(__gfx10_1_generic__)
+            return family_set::rdna1;
+        #elif defined(__SPIRV__)
+            return family_set::none; // For now
+            #define ROCPRIM_TARGET_SPIRV 1
+        #elif defined(__HIP_DEVICE_COMPILE__)
+            // Double check the build target for typos otherwise please submit an issue or pull request!
+            #warning "unknown build target"
+        #else
+            // Make the compiler happy (this path is not reachable on host)
+            return family_set::none;
+        #endif
+    }
 }
-
-template<>
-struct std::formatter<gpu::pci_address, char> {
-    template <typename ParseContext>
-    constexpr auto parse(ParseContext& ctx) {
-        return ctx.begin();
-    }
-
-    template <typename FmtContext>
-    FmtContext::iterator format(gpu::pci_address addr, FmtContext& ctx) const {
-        return std::format_to( ctx.out(),
-            "{:04x}:{:02x}:{:02x}.{:01x}",
-            addr.domain,
-            addr.bus,
-            addr.device,
-            addr.function
-        );
-    }
-};
 
 #endif

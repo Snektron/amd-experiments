@@ -32,8 +32,8 @@ void test_kernel(F f) {
 template<typename F>
 void test(benchmark::executor& exec, const char* name, F f) {
     constexpr auto block_size = 1024;
-    const auto grid_size = 4096 * exec.dev.properties.multiProcessorCount;
-    const auto warp_size = exec.dev.properties.warpSize;
+    const auto grid_size = 4096 * exec.dev.properties.compute_units;
+    const auto warp_size = exec.dev.properties.warp_size;
     const auto size = benchmark::size(warp_size * trails_per_thread * block_size * grid_size);
     const auto size_bytes = size.to_bytes<int>();
 
@@ -115,4 +115,3 @@ int main() {
         std::exit(1);
     }
 }
-

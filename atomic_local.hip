@@ -48,7 +48,7 @@ void test_kernel(F f, int conflicts_shift) {
 template<typename T, typename F>
 void test(benchmark::executor& exec, const char* name, F f) {
     constexpr auto block_size = 256;
-    const auto grid_size = 256 * exec.dev.properties.multiProcessorCount;
+    const auto grid_size = 256 * exec.dev.properties.compute_units;
     const auto size = benchmark::size(trials_per_thread * block_size * grid_size);
     const auto size_bytes = size.to_bytes<T>();
 
@@ -67,7 +67,7 @@ void test(benchmark::executor& exec, const char* name, F f) {
             << " +- " << std::chrono::duration_cast<std::chrono::microseconds>(stats.stddev) << "\n";
         std::cout << "  throughput:      " << benchmark::throughput(size, stats.average).tera() << " TOPS ("
             << benchmark::throughput(size_bytes, stats.average).tera() << " TB/s)\n";
-        std::cout << "  cycles:          " << (double(exec.dev.properties.clockRate) * 1000 * exec.dev.properties.multiProcessorCount * 4 * exec.dev.properties.warpSize) / benchmark::throughput(size, stats.fastest).rate << "\n";
+    std::cout << "  cycles:          " << (double(exec.dev.properties.clock_rate) * 1000 * exec.dev.properties.total_simds() * exec.dev.properties.warp_size) / benchmark::throughput(size, stats.fastest).rate << "\n";
     }
     std::cout << "\n";
 }
@@ -79,7 +79,7 @@ int main() {
         const auto dev = gpu::get_default_device();
         auto exec = benchmark::executor(dev);
 
-        const std::string arch_name{exec.dev.properties.gcnArchName};
+        const auto arch_name = exec.dev.properties.arch_name;
 
         // "Conflicts" here are not LDS bank conflicts but "collisions" when multiple lanes access
         // the same address. Even this is technically a bank conflict, ds_write/ds_read do not

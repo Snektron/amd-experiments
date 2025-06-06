@@ -110,10 +110,8 @@ namespace benchmark {
             // https://github.com/ROCm/rocm_smi_lib/issues/122#issuecomment-1839991753 and
             // https://github.com/ROCm/ROCmValidationSuite/blob/eaaaa4e093041a76c6367509dc04b2de2fbf67e2/src/gpu_util.cpp#L436
 
-            const auto dev_addr = this->dev.get_pci_bus_id();
-
             this->rsmi_dev = [&]{
-                const auto hip_pci_id = dev_addr.rsmi_id();
+                const auto hip_pci_id = this->dev.properties.pci_address.rsmi_id();
 
                 uint32_t num_devices;
                 RSMI_TRY(rsmi_num_monitor_devices(&num_devices));
@@ -126,12 +124,12 @@ namespace benchmark {
                     }
                 }
 
-                throw traced_error("could not map HIP device id {} to an RSMI device id", this->dev.ordinal);
+                throw traced_error("could not map HIP device id {} to an RSMI device id", this->dev.hip_ordinal);
             }();
 
             char dev_name[256] = {0};
             RSMI_TRY(rsmi_dev_name_get(this->rsmi_dev, dev_name, sizeof(dev_name) - 1));
-            std::cout << std::format("benchmarking on device '{}' ({})\n", dev_name, dev_addr);
+            std::cout << std::format("benchmarking on device '{}' ({})\n", this->dev.properties.device_name, this->dev.properties.pci_address);
 
             // Try to make performance deterministic
             // First query the current level so that we can reset it later.

@@ -43,10 +43,10 @@ void test(benchmark::executor& exec, const char* name, F f, int ops_per_inst) {
     }
 
     constexpr auto block_size = 1024;
-    const auto warp_size = exec.dev.properties.warpSize;
-    const auto compute_units = exec.dev.properties.multiProcessorCount * 1; // TODO: Maybe this needs to be * 2 for WGPs?
+    const auto warp_size = exec.dev.properties.warp_size;
+    const auto total_simds = exec.dev.properties.total_simds();
     const auto warps = block_size / warp_size;
-    const auto grid_size = 1024 * compute_units;
+    const auto grid_size = 1024 * exec.dev.properties.compute_units;
     const auto insts = benchmark::size(trials_per_thread * warps * grid_size);
     const auto flop = benchmark::size(insts.count * ops_per_inst);
 
@@ -60,10 +60,10 @@ void test(benchmark::executor& exec, const char* name, F f, int ops_per_inst) {
     });
 
     // TODO: Fetch the actual clock rate?
-    const auto clock_rate = static_cast<double>(exec.dev.properties.clockRate) * 1000;
+    const auto clock_rate = static_cast<double>(exec.dev.properties.clock_rate) * 1000;
     const auto cycles = clock_rate * std::chrono::duration_cast<std::chrono::duration<double>>(stats.average).count();
-    const auto latency = cycles / (insts.count / (compute_units * 4));
-    const auto ops = ops_per_inst * 2 /* simds_per_cu */ / latency;
+    const auto latency = cycles / (insts.count / total_simds);
+    const auto ops = ops_per_inst * exec.dev.properties.simds_per_cu / latency;
 
     std::cout << name << ":\n";
     std::cout << "  time per launch: " << std::chrono::duration_cast<std::chrono::microseconds>(stats.average)
@@ -78,7 +78,7 @@ int main() {
     std::cout << std::fixed << std::setprecision(2);
     try {
         const auto dev = gpu::get_default_device();
-        const auto ws = dev.properties.warpSize;
+        const auto ws = dev.properties.warp_size;
         auto exec = benchmark::executor(dev);
 
         test(exec, "mov", [] {
@@ -113,4 +113,3 @@ int main() {
         std::exit(1);
     }
 }
-

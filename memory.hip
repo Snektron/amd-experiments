@@ -54,7 +54,7 @@ void load_kernel(T* __restrict__ buffer) {
 
 template<typename T, int block_size, int items_per_thread>
 void load(benchmark::executor& exec) {
-    const size_t grid_size = exec.dev.properties.totalGlobalMem * 90 / 100 / (sizeof(T) * items_per_thread * block_size);
+    const size_t grid_size = exec.dev.properties.total_global_mem * 90 / 100 / (sizeof(T) * items_per_thread * block_size);
     const size_t buffer_items = grid_size * block_size * items_per_thread;
 
     const auto buffer_size = benchmark::size(buffer_items);
@@ -62,9 +62,9 @@ void load(benchmark::executor& exec) {
     const auto reads = benchmark::size(grid_size * block_size * items_per_thread);
     const auto read_bytes = reads.to_bytes<T>();
 
-    std::cout << "total gmem:       " << benchmark::size(exec.dev.properties.totalGlobalMem).giga() << " GB\n";
-    std::cout << "l2 cache size:    " << exec.dev.properties.l2CacheSize << '\n';
-    std::cout << "compute units:    " << exec.dev.properties.multiProcessorCount << '\n';
+    std::cout << "total gmem:       " << benchmark::size(exec.dev.properties.total_global_mem).giga() << " GB\n";
+    std::cout << "l2 cache size:    " << exec.dev.properties.l2_cache_size << '\n';
+    std::cout << "compute units:    " << exec.dev.properties.compute_units << '\n';
     std::cout << "grid size:        " << grid_size << '\n';
     std::cout << "block size:       " << block_size << '\n';
     std::cout << "items per thread: " << items_per_thread << '\n';
