@@ -21,18 +21,26 @@ void load_kernel(T* __restrict__ buffer) {
     const auto* ptr = buffer + offset;
 
     #ifdef GPU_FAMILY_CDNA3
-        #define ATTRS " nt"
+        #define ATTRS "nt"
+    #elifdef GPU_FAMILY_RDNA4
+        #define ATTRS "th:TH_LOAD_NT"
     #else
-        #define ATTRS " glc slc"
+        #define ATTRS "glc slc"
+    #endif
+
+    #ifdef GPU_FAMILY_RDNA4
+        #define INST "global_load_b128"
+    #else
+        #define INST "global_load_dwordx4"
     #endif
 
     if constexpr (items_per_thread == 16) {
         __uint128_t a, b, c, d;
         asm volatile(
-            "global_load_dwordx4 %0, %4 off " ATTRS "\n\t"
-            "global_load_dwordx4 %1, %4 off offset:1024 " ATTRS "\n\t"
-            "global_load_dwordx4 %2, %4 off offset:2048 " ATTRS "\n\t"
-            "global_load_dwordx4 %3, %4 off offset:3072 " ATTRS "\n\t"
+            INST " %0, %4 off " ATTRS "\n\t"
+            INST " %1, %4 off offset:1024 " ATTRS "\n\t"
+            INST " %2, %4 off offset:2048 " ATTRS "\n\t"
+            INST " %3, %4 off offset:3072 " ATTRS "\n\t"
             "s_waitcnt vmcnt(0)"
             : "=&v"(a), "=&v"(b), "=&v"(c), "=&v"(d)
             : "v"(ptr)
@@ -41,14 +49,14 @@ void load_kernel(T* __restrict__ buffer) {
         __uint128_t a, b, c, d;
         __uint128_t e, f, g, h;
         asm volatile(
-            "global_load_dwordx4 %0, %8 off offset:-4096 " ATTRS "\n\t"
-            "global_load_dwordx4 %1, %8 off offset:-3072 " ATTRS "\n\t"
-            "global_load_dwordx4 %2, %8 off offset:-2048 " ATTRS "\n\t"
-            "global_load_dwordx4 %3, %8 off offset:-1024 " ATTRS "\n\t"
-            "global_load_dwordx4 %4, %8 off offset:0000 " ATTRS "\n\t"
-            "global_load_dwordx4 %5, %8 off offset:1024 " ATTRS "\n\t"
-            "global_load_dwordx4 %6, %8 off offset:2048 " ATTRS "\n\t"
-            "global_load_dwordx4 %7, %8 off offset:3072 " ATTRS "\n\t"
+            INST " %0, %8 off offset:-4096 " ATTRS "\n\t"
+            INST " %1, %8 off offset:-3072 " ATTRS "\n\t"
+            INST " %2, %8 off offset:-2048 " ATTRS "\n\t"
+            INST " %3, %8 off offset:-1024 " ATTRS "\n\t"
+            INST " %4, %8 off offset:0000 " ATTRS "\n\t"
+            INST " %5, %8 off offset:1024 " ATTRS "\n\t"
+            INST " %6, %8 off offset:2048 " ATTRS "\n\t"
+            INST " %7, %8 off offset:3072 " ATTRS "\n\t"
             "s_waitcnt vmcnt(0)"
             : "=&v"(a), "=&v"(b), "=&v"(c), "=&v"(d), "=&v"(e), "=&v"(f), "=&v"(g), "=&v"(h)
             : "v"(ptr + 1024)
