@@ -306,7 +306,7 @@ namespace gpu {
             uint32_t simds_per_cu;
             uint32_t simd_width;
             uint32_t cacheline_size;
-            uint32_t cache_size[4];
+            std::array<uint32_t, 4> cache_size;
 
             uint32_t total_simds() const {
                 return this->compute_units * this->simds_per_cu;
@@ -465,6 +465,12 @@ namespace gpu {
             // Make the compiler happy (this path is not reachable)
             return family_set::none;
         #endif
+    }
+
+    template <typename T>
+    __device__
+    void do_not_optimize(T value) {
+        asm volatile ("" :: "v"(value));
     }
 }
 
