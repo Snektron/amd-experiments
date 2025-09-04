@@ -24,7 +24,9 @@
     }                                    \
 }
 
-#if defined(__gfx942__) || defined(__gfx950__) || defined(__gfx9_4_generic__)
+#if defined(__gfx950__)
+    #define GPU_FAMILY_CDNA4
+#elif defined(__gfx942__) || defined(__gfx9_4_generic__)
     #define GPU_FAMILY_CDNA3
 #elif defined(__gfx90a__)
     #define GPU_FAMILY_CDNA2
@@ -50,7 +52,6 @@
     // Double check the build target for typos otherwise please submit an issue or pull request!
     #error "unknown build target"
 #endif
-
 
 namespace gpu {
     struct error: traced_error {
@@ -220,8 +221,9 @@ namespace gpu {
             cdna1 = 0x20,
             cdna2 = 0x40,
             cdna3 = 0x80,
+            cdna4 = 0x100,
 
-            all = (cdna3 << 1) - 1
+            all = (cdna4 << 1) - 1
         };
 
         using backing_type = std::underlying_type_t<bits>;
@@ -417,8 +419,10 @@ namespace gpu {
                 return family_set::rdna2;
             } else if (arch_name.starts_with("gfx101")) {
                 return family_set::rdna1;
-            } else if (arch_name.starts_with("gfx94") || arch_name.starts_with("gfx95")) {
+            } else if (arch_name.starts_with("gfx94")) {
                 return family_set::cdna3;
+            } else if (arch_name.starts_with("gfx95")) {
+                return family_set::cdna4;
             } else if (arch_name.starts_with("gfx90a")) {
                 return family_set::cdna2;
             } else if (arch_name.starts_with("gfx908")) {
@@ -443,7 +447,9 @@ namespace gpu {
     __device__
     constexpr family_set get_device_family() {
         // See https://llvm.org/docs/AMDGPUUsage.html#instructions
-        #ifdef GPU_FAMILY_CDNA3
+        #ifdef GPU_FAMILY_CDNA4
+            return family_set::cdna4;
+        #elifdef GPU_FAMILY_CDNA3
             return family_set::cdna3;
         #elifdef GPU_FAMILY_CDNA2
             return family_set::cdna2;
