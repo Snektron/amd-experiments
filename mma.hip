@@ -104,87 +104,87 @@ int main() {
 
         // RDNA 3 instructions
 
-        test<gpu::family_set::rdna3>(exec, "v_wmma_f32_16x16x16_f16", [] {
+        test<gpu::family::rdna3>(exec, "v_wmma_f32_16x16x16_f16", [] {
             gpu::do_not_optimize(__builtin_amdgcn_wmma_f32_16x16x16_f16_w32(undef(), undef(), undef()));
         }, 16 * 16 * 16 * 2);
 
-        test<gpu::family_set::rdna3>(exec, "v_wmma_f16_16x16x16_f16", [] {
+        test<gpu::family::rdna3>(exec, "v_wmma_f16_16x16x16_f16", [] {
             gpu::do_not_optimize(__builtin_amdgcn_wmma_f16_16x16x16_f16_w32(undef(), undef(), undef(), 0));
         }, 16 * 16 * 16 * 2);
 
-        test<gpu::family_set::rdna3>(exec, "v_wmma_i32_16x16x16_iu8", [] {
+        test<gpu::family::rdna3>(exec, "v_wmma_i32_16x16x16_iu8", [] {
             gpu::do_not_optimize(__builtin_amdgcn_wmma_i32_16x16x16_iu8_w32(0, undef(), 0, undef(), undef(), 0));
         }, 16 * 16 * 16 * 2);
 
-        test<gpu::family_set::rdna3>(exec, "v_wmma_i32_16x16x16_iu4", [] {
+        test<gpu::family::rdna3>(exec, "v_wmma_i32_16x16x16_iu4", [] {
             gpu::do_not_optimize(__builtin_amdgcn_wmma_i32_16x16x16_iu4_w32(0, undef(), 0, undef(), undef(), 0));
         }, 16 * 16 * 16 * 2);
 
         // RDNA 4 instructions
 
-        test<gpu::family_set::rdna4>(exec, "v_wmma_f32_16x16x16_f16", [] {
+        test<gpu::family::rdna4>(exec, "v_wmma_f32_16x16x16_f16", [] {
             gpu::do_not_optimize(__builtin_amdgcn_wmma_f32_16x16x16_f16_w32_gfx12(undef(), undef(), undef()));
         }, 16 * 16 * 16 * 2);
 
-        test<gpu::family_set::rdna4>(exec, "v_wmma_f16_16x16x16_f16", [] {
+        test<gpu::family::rdna4>(exec, "v_wmma_f16_16x16x16_f16", [] {
             gpu::do_not_optimize(__builtin_amdgcn_wmma_f16_16x16x16_f16_w32_gfx12(undef(), undef(), undef()));
         }, 16 * 16 * 16 * 2);
 
-        test<gpu::family_set::rdna4>(exec, "v_wmma_f32_16x16x16_fp8_fp8", [] {
+        test<gpu::family::rdna4>(exec, "v_wmma_f32_16x16x16_fp8_fp8", [] {
             gpu::do_not_optimize(__builtin_amdgcn_wmma_f32_16x16x16_fp8_fp8_w32_gfx12(undef(), undef(), undef()));
         }, 16 * 16 * 16 * 2);
 
-        test<gpu::family_set::rdna4>(exec, "v_wmma_i32_16x16x16_iu8", [] {
+        test<gpu::family::rdna4>(exec, "v_wmma_i32_16x16x16_iu8", [] {
             gpu::do_not_optimize(__builtin_amdgcn_wmma_i32_16x16x16_iu8_w32_gfx12(0, undef(), 0, undef(), undef(), 0));
         }, 16 * 16 * 16 * 2);
 
-        test<gpu::family_set::rdna4>(exec, "v_wmma_i32_16x16x16_iu4", [] {
+        test<gpu::family::rdna4>(exec, "v_wmma_i32_16x16x16_iu4", [] {
             gpu::do_not_optimize(__builtin_amdgcn_wmma_i32_16x16x16_iu4_w32_gfx12(0, undef(), 0, undef(), undef(), 0));
         }, 16 * 16 * 16 * 2);
 
-        test<gpu::family_set::rdna4>(exec, "v_wmma_i32_16x16x32_iu4", [] {
+        test<gpu::family::rdna4>(exec, "v_wmma_i32_16x16x32_iu4", [] {
             gpu::do_not_optimize(__builtin_amdgcn_wmma_i32_16x16x32_iu4_w32_gfx12(0, undef(), 0, undef(), undef(), 0));
         }, 16 * 16 * 32 * 2);
 
         // CDNA 3 instructions
 
-        test<gpu::family_set::cdna3>(exec, "v_mfma_f32_32x32x1_f32", [] {
+        test<gpu::family::cdna3>(exec, "v_mfma_f32_32x32x1_f32", [] {
             gpu::do_not_optimize(__builtin_amdgcn_mfma_f32_32x32x1f32(undef(), undef(), undef(), 0, 0, 0));
         }, 32 * 32 * 1 * 2);
 
-        test<gpu::family_set::cdna3>(exec, "v_mfma_f32_16x16x1_f32", [] {
+        test<gpu::family::cdna3>(exec, "v_mfma_f32_16x16x1_f32", [] {
             gpu::do_not_optimize(__builtin_amdgcn_mfma_f32_16x16x1f32(undef(), undef(), undef(), 0, 0, 0));
         }, 16 * 16 * 1 * 2);
 
-        test<gpu::family_set::cdna3>(exec, "v_mfma_f32_32x32x4_f16", [] {
+        test<gpu::family::cdna3>(exec, "v_mfma_f32_32x32x4_f16", [] {
             gpu::do_not_optimize(__builtin_amdgcn_mfma_f32_32x32x4f16(undef(), undef(), undef(), 0, 0, 0));
         }, 32 * 32 * 4 * 2);
 
-        test<gpu::family_set::cdna3>(exec, "v_mfma_i32_16x16x4_i8", [] {
+        test<gpu::family::cdna3>(exec, "v_mfma_i32_16x16x4_i8", [] {
             gpu::do_not_optimize(__builtin_amdgcn_mfma_i32_16x16x4i8(undef(), undef(), undef(), 0, 0, 0));
         }, 16 * 16 * 4 * 2);
 
-        test<gpu::family_set::cdna3>(exec, "v_mfma_f64_16x16x4_f64", [] {
+        test<gpu::family::cdna3>(exec, "v_mfma_f64_16x16x4_f64", [] {
             gpu::do_not_optimize(__builtin_amdgcn_mfma_f64_16x16x4f64(undef(), undef(), undef(), 0, 0, 0));
         }, 16 * 16 * 4 * 2);
 
-        test<gpu::family_set::cdna3>(exec, "v_mfma_f64_4x4x4_f64", [] {
+        test<gpu::family::cdna3>(exec, "v_mfma_f64_4x4x4_f64", [] {
             gpu::do_not_optimize(__builtin_amdgcn_mfma_f64_4x4x4f64(undef(), undef(), undef(), 0, 0, 0));
         }, 4 * 4 * 4 * 2);
 
-        test<gpu::family_set::cdna3>(exec, "v_mfma_i32_16x16x32_i8", [] {
+        test<gpu::family::cdna3>(exec, "v_mfma_i32_16x16x32_i8", [] {
             gpu::do_not_optimize(__builtin_amdgcn_mfma_i32_16x16x32_i8(undef(), undef(), undef(), 0, 0, 0));
         }, 16 * 16 * 32 * 2);
 
-        test<gpu::family_set::cdna3>(exec, "v_mfma_i32_32x32x16_i8", [] {
+        test<gpu::family::cdna3>(exec, "v_mfma_i32_32x32x16_i8", [] {
             gpu::do_not_optimize(__builtin_amdgcn_mfma_i32_32x32x16_i8(undef(), undef(), undef(), 0, 0, 0));
         }, 32 * 32 * 16 * 2);
 
-        test<gpu::family_set::cdna3>(exec, "v_mfma_f32_16x16x32_fp8_fp8", [] {
+        test<gpu::family::cdna3>(exec, "v_mfma_f32_16x16x32_fp8_fp8", [] {
             gpu::do_not_optimize(__builtin_amdgcn_mfma_f32_16x16x32_fp8_fp8(undef(), undef(), undef(), 0, 0, 0));
         }, 16 * 16 * 32 * 2);
 
-        test<gpu::family_set::cdna3>(exec, "v_mfma_f32_32x32x16_fp8_fp8", [] {
+        test<gpu::family::cdna3>(exec, "v_mfma_f32_32x32x16_fp8_fp8", [] {
             gpu::do_not_optimize(__builtin_amdgcn_mfma_f32_32x32x16_fp8_fp8(undef(), undef(), undef(), 0, 0, 0));
         }, 32 * 32 * 16 * 2);
 

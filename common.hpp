@@ -5,8 +5,10 @@
 #include <sstream>
 #include <format>
 #include <string>
-#include <cstdint>
 #include <vector>
+#include <numeric>
+#include <chrono>
+#include <cstdint>
 
 struct traced_error: std::runtime_error {
     std::stacktrace trace;

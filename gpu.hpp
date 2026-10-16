@@ -207,30 +207,61 @@ namespace gpu {
         }
     };
 
-    struct family_set {
-        enum bits {
+    struct family {
+        enum class bits {
             none = 0x0,
 
             gcn5 = 0x1,
-
             rdna1 = 0x2,
-            rdna2 = 0x4,
-            rdna3 = 0x8,
-            rdna4 = 0x10,
-
-            cdna1 = 0x20,
-            cdna2 = 0x40,
-            cdna3 = 0x80,
+            cdna1 = 0x4,
+            rdna2 = 0x8,
+            cdna2 = 0x10,
+            rdna3 = 0x20,
+            cdna3 = 0x40,
+            rdna4 = 0x80,
             cdna4 = 0x100,
 
             all = (cdna4 << 1) - 1
         };
 
+        bits kind;
+
+        constexpr family(bits kind): kind(kind) {}
+
+        static const family gcn5;
+        static const family rdna1;
+        static const family cdna1;
+        static const family rdna2;
+        static const family cdna2;
+        static const family rdna3;
+        static const family cdna3;
+        static const family rdna4;
+        static const family cdna4;
+    };
+
+    constexpr const family family::gcn5 = family(family::bits::gcn5);
+    constexpr const family family::rdna1 = family(family::bits::rdna1);
+    constexpr const family family::cdna1 = family(family::bits::cdna1);
+    constexpr const family family::rdna2 = family(family::bits::rdna2);
+    constexpr const family family::cdna2 = family(family::bits::cdna2);
+    constexpr const family family::rdna3 = family(family::bits::rdna3);
+    constexpr const family family::cdna3 = family(family::bits::cdna3);
+    constexpr const family family::rdna4 = family(family::bits::rdna4);
+    constexpr const family family::cdna4 = family(family::bits::cdna4);
+
+    struct family_set {
+        using bits = family::bits;
+
         using backing_type = std::underlying_type_t<bits>;
 
         bits families;
 
-        constexpr family_set(bits families): families(families) {}
+        constexpr family_set(family::bits bits): families(bits) {}
+
+        constexpr family_set(family family): families(family.kind) {}
+
+        template<typename... Ts>
+        constexpr family_set(Ts... families);
 
         constexpr bool operator==(const family_set& other) const {
             return this->families == other.families;
@@ -247,7 +278,7 @@ namespace gpu {
         }
 
         constexpr family_set operator~() const {
-            return unop(*this, [](auto a) { return ~a & bits::all; });
+            return unop(*this, [](auto a) { return ~a & static_cast<backing_type>(bits::all); });
         }
 
         template <typename F>
@@ -286,7 +317,22 @@ namespace gpu {
         constexpr bool contains(family_set other) const {
             return (*this & other) == other;
         }
+
+        static const family_set rdna;
+        static const family_set cdna;
+
+        static const family_set none;
+        static const family_set all;
     };
+
+    template<typename... Ts>
+    constexpr family_set::family_set(Ts... families): family_set((family_set(families) | ...)) {}
+
+    constexpr const family_set family_set::rdna = family_set(family::rdna1, family::rdna2, family::rdna3, family::rdna4);
+    constexpr const family_set family_set::cdna = family_set(family::cdna1, family::cdna2, family::cdna3, family::cdna4);
+
+    constexpr const family_set family_set::none = family_set(family::bits::none);
+    constexpr const family_set family_set::all = family_set(family::bits::all);
 
     enum class cache_level {
         l1,
@@ -412,23 +458,23 @@ namespace gpu {
         family_set get_family() const {
             const auto arch_name = this->properties.arch_name;
             if (arch_name.starts_with("gfx12")) {
-                return family_set::rdna4;
+                return family::rdna4;
             } else if (arch_name.starts_with("gfx11")) {
-                return family_set::rdna3;
+                return family::rdna3;
             } else if (arch_name.starts_with("gfx103")) {
-                return family_set::rdna2;
+                return family::rdna2;
             } else if (arch_name.starts_with("gfx101")) {
-                return family_set::rdna1;
+                return family::rdna1;
             } else if (arch_name.starts_with("gfx94")) {
-                return family_set::cdna3;
+                return family::cdna3;
             } else if (arch_name.starts_with("gfx95")) {
-                return family_set::cdna4;
+                return family::cdna4;
             } else if (arch_name.starts_with("gfx90a")) {
-                return family_set::cdna2;
+                return family::cdna2;
             } else if (arch_name.starts_with("gfx908")) {
-                return family_set::cdna1;
+                return family::cdna1;
             } else if (arch_name.starts_with("gfx9")) {
-                return family_set::gcn5;
+                return family::gcn5;
             }
 
             return family_set::none;
@@ -448,23 +494,23 @@ namespace gpu {
     constexpr family_set get_device_family() {
         // See https://llvm.org/docs/AMDGPUUsage.html#instructions
         #ifdef GPU_FAMILY_CDNA4
-            return family_set::cdna4;
+            return family::cdna4;
         #elifdef GPU_FAMILY_CDNA3
-            return family_set::cdna3;
+            return family::cdna3;
         #elifdef GPU_FAMILY_CDNA2
-            return family_set::cdna2;
+            return family::cdna2;
         #elifdef GPU_FAMILY_CDNA1
-            return family_set::cdna1;
+            return family::cdna1;
         #elifdef GPU_FAMILY_GCN5
-            return family_set::gcn5;
+            return family::gcn5;
         #elifdef GPU_FAMILY_RDNA4
-            return family_set::rdna4;
+            return family::rdna4;
         #elifdef GPU_FAMILY_RDNA3
-            return family_set::rdna3;
+            return family::rdna3;
         #elifdef GPU_FAMILY_RDNA2
-            return family_set::rdna2;
+            return family::rdna2;
         #elifdef GPU_FAMILY_RDNA1
-            return family_set::rdna1;
+            return family::rdna1;
         #elifdef GPU_FAMILY_SPIRV
             return family_set::none; // For now
         #else

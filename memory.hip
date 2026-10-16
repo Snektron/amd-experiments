@@ -68,7 +68,8 @@ void load_kernel(T* __restrict__ buffer) {
 
 template<typename T, int block_size, int items_per_thread>
 void load(benchmark::executor& exec) {
-    const size_t grid_size = exec.dev.properties.total_global_mem * 90 / 100 / (sizeof(T) * items_per_thread * block_size);
+    // const size_t grid_size = exec.dev.properties.total_global_mem * 10 / 100 / (sizeof(T) * items_per_thread * block_size);
+    const size_t grid_size = exec.dev.properties.get_cache_size(gpu::cache_level::l2) / (sizeof(T) * items_per_thread * block_size);
     const size_t buffer_items = grid_size * block_size * items_per_thread;
 
     const auto buffer_size = benchmark::size(buffer_items);
@@ -92,7 +93,7 @@ void load(benchmark::executor& exec) {
         .block_size = block_size,
     };
 
-    const auto buffer = exec.dev.alloc<T>(buffer_items);
+    const auto buffer = exec.dev.alloc<T>(buffer_items * 2);
     const auto stats = exec.bench([&](const auto& stream) {
         stream.launch(cfg, load_kernel<T, block_size, items_per_thread>, buffer.raw);
     });

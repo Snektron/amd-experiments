@@ -7,34 +7,31 @@
 
 constexpr int trails_per_thread = 128;
 
-enum class shuffle_method {
-    mov,
-    ds_permute,
-    ds_bpermute,
-    ds_swizzle,
-    v_readlane,
-    v_writelane,
-    v_readfirstlane,
-    dpp,
-};
-
-template <int block_size, typename F>
+template <gpu::family_set families, int block_size, typename F>
 __global__ __launch_bounds__(block_size)
 void test_kernel(F f) {
-    #pragma clang loop unroll(full)
-    for (int i = 0; i < trails_per_thread; ++i) {
-        f();
+    if constexpr (families.contains(gpu::get_device_family())) {
+        #pragma clang loop unroll(full)
+        for (int i = 0; i < trails_per_thread; ++i) {
+            f();
+        }
+        asm volatile("s_waitcnt lgkmcnt(0)");
     }
-
-    asm volatile("s_waitcnt lgkmcnt(0)");
 }
 
-template<typename F>
+template <gpu::family_set families = gpu::family_set::all, typename F>
 void test(benchmark::executor& exec, const char* name, F f) {
+    std::cout << name << ":\n";
+
+    if (!families.contains(exec.dev.get_family())) {
+        std::cout << "  skipping (not supported on this arch)\n";
+        return;
+    }
+
     constexpr auto block_size = 1024;
     const auto grid_size = 4096 * exec.dev.properties.compute_units;
     const auto warp_size = exec.dev.properties.warp_size;
-    const auto size = benchmark::size(warp_size * trails_per_thread * block_size * grid_size);
+    const auto size = benchmark::size(size_t{warp_size} * trails_per_thread * block_size * grid_size);
     const auto size_bytes = size.to_bytes<int>();
 
     const gpu::launch_config cfg = {
@@ -43,10 +40,9 @@ void test(benchmark::executor& exec, const char* name, F f) {
     };
 
     const auto stats = exec.bench([&](const auto& stream) {
-        stream.launch(cfg, test_kernel<block_size, F>, f);
+        stream.launch(cfg, test_kernel<families, block_size, F>, f);
     });
 
-    std::cout << name << ":\n";
     std::cout << "  time per launch: " << std::chrono::duration_cast<std::chrono::microseconds>(stats.runtime.average)
         << " +- " << std::chrono::duration_cast<std::chrono::microseconds>(stats.runtime.stddev) << "\n";
     std::cout << "  throughput:      " << benchmark::throughput(size, stats.runtime.average).tera() << " TOPS ("
@@ -105,6 +101,18 @@ int main() {
         test(exec, "mov_dpp (row mirror, src reg != dst reg)", [] {
             // RDNA and CDNA both have this dpp instruction
             asm volatile("v_mov_b32_dpp v0, v1 row_mirror row_mask:0xf bank_mask:0xf" ::: "v0", "v1");
+        });
+        test<gpu::family_set::rdna>(exec, "v_permlane16", [] {
+            asm volatile("v_permlane16_b32 v0, v1, s0, s1" ::: "v0", "v1", "s0", "s1");
+        });
+        test<gpu::family_set::rdna>(exec, "v_permlanex16", [] {
+            asm volatile("v_permlanex16_b32 v0, v1, s0, s1" ::: "v0", "v1", "s0", "s1");
+        });
+        test<gpu::family_set::rdna & ~gpu::family_set(gpu::family::rdna2)>(exec, "v_permlane16_var", [] {
+            asm volatile("v_permlane16_var_b32 v0, v1, v2" ::: "v0", "v1", "v2");
+        });
+        test<gpu::family_set::rdna & ~gpu::family_set(gpu::family::rdna2)>(exec, "v_permlanex16_var", [] {
+            asm volatile("v_permlanex16_var_b32 v0, v1, v2" ::: "v0", "v1", "v2");
         });
     } catch (const gpu::error& e) {
         std::cerr << "caught exception: " << e.what() << "\n";
