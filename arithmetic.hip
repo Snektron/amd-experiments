@@ -17,10 +17,10 @@ void test_kernel(F f) {
 }
 
 template<typename F>
-void test(benchmark::executor& exec, const char* name, F f) {
+void test(benchmark::executor& exec, const char* name, F f, int ops_per_inst = 1) {
     constexpr auto block_size = 256;
-    const auto grid_size = 1024 * exec.dev.properties.compute_units;
-    const auto size = benchmark::size(trials_per_thread * block_size * grid_size);
+    const auto grid_size = 16384 * exec.dev.properties.compute_units;
+    const auto size = benchmark::size(size_t{trials_per_thread} * block_size * grid_size);
     const auto size_bytes = size.to_bytes<int>();
 
     const gpu::launch_config cfg = {
@@ -35,7 +35,7 @@ void test(benchmark::executor& exec, const char* name, F f) {
     std::cout << name << ":\n";
     std::cout << "  time per launch: " << std::chrono::duration_cast<std::chrono::microseconds>(stats.runtime.average)
         << " +- " << std::chrono::duration_cast<std::chrono::microseconds>(stats.runtime.stddev) << "\n";
-    std::cout << "  throughput:      " << benchmark::throughput(size, stats.runtime.average).tera() << " TOPS ("
+    std::cout << "  throughput:      " << benchmark::throughput(benchmark::size(size.count * ops_per_inst), stats.runtime.average).tera() << " TOPS ("
        << benchmark::throughput(size_bytes, stats.runtime.average).tera() << " TB/s)\n";
     std::cout << "  cycles:          " << (stats.clock_rate.average * exec.dev.properties.total_simds() * exec.dev.properties.warp_size) / benchmark::throughput(size, stats.runtime.smallest).rate << "\n";
 }
@@ -52,6 +52,9 @@ int main() {
         test(exec, "v_mul_u32_u24", [] {
             asm volatile("v_mul_u32_u24 v0, v1, v2" ::: "v0", "v1", "v2");
         });
+        test(exec, "v_fma_u32", [] {
+            asm volatile("v_fma_f32 v0, v1, v2, v3" ::: "v0", "v1", "v2", "v3");
+        }, 2);
         test(exec, "v_mul_hi_u32", [] {
             asm volatile("v_mul_hi_u32 v0, v1, v2" ::: "v0", "v1", "v2");
         });

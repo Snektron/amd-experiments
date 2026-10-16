@@ -51,7 +51,7 @@ void test(benchmark::executor& exec, const char* name, F f, int ops_per_inst) {
     const auto warp_size = exec.dev.properties.warp_size;
     const auto total_simds = exec.dev.properties.total_simds();
     const auto warps = block_size / warp_size;
-    const auto grid_size = 32 * exec.dev.properties.compute_units;
+    const auto grid_size = 64 * exec.dev.properties.compute_units;
     const auto insts = benchmark::size(trials_per_thread * warps * grid_size);
     const auto flop = benchmark::size(insts.count * ops_per_inst);
 
@@ -65,7 +65,7 @@ void test(benchmark::executor& exec, const char* name, F f, int ops_per_inst) {
     });
 
     const auto clock_rate = stats.clock_rate.average;
-    const auto cycles = clock_rate * std::chrono::duration_cast<std::chrono::duration<double>>(stats.runtime.largest).count();
+    const auto cycles = clock_rate * std::chrono::duration_cast<std::chrono::duration<double>>(stats.runtime.average).count();
     const auto latency = cycles / (insts.count / total_simds);
     const auto ops = ops_per_inst * exec.dev.properties.simds_per_cu / latency;
 

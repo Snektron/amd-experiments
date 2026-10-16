@@ -5,7 +5,7 @@
 #include "gpu.hpp"
 #include "benchmark.hpp"
 
-constexpr int trails_per_thread = 128;
+constexpr int trails_per_thread = 128 * 2;
 
 template <gpu::family_set families, int block_size, typename F>
 __global__ __launch_bounds__(block_size)
@@ -29,9 +29,8 @@ void test(benchmark::executor& exec, const char* name, F f) {
     }
 
     constexpr auto block_size = 1024;
-    const auto grid_size = 4096 * exec.dev.properties.compute_units;
-    const auto warp_size = exec.dev.properties.warp_size;
-    const auto size = benchmark::size(size_t{warp_size} * trails_per_thread * block_size * grid_size);
+    const auto grid_size = 16384 * exec.dev.properties.compute_units;
+    const auto size = benchmark::size(size_t{trails_per_thread} * block_size * grid_size);
     const auto size_bytes = size.to_bytes<int>();
 
     const gpu::launch_config cfg = {
@@ -43,10 +42,10 @@ void test(benchmark::executor& exec, const char* name, F f) {
         stream.launch(cfg, test_kernel<families, block_size, F>, f);
     });
 
+    const auto tput = benchmark::throughput(size, stats.runtime.average);
     std::cout << "  time per launch: " << std::chrono::duration_cast<std::chrono::microseconds>(stats.runtime.average)
         << " +- " << std::chrono::duration_cast<std::chrono::microseconds>(stats.runtime.stddev) << "\n";
-    std::cout << "  throughput:      " << benchmark::throughput(size, stats.runtime.average).tera() << " TOPS ("
-       << benchmark::throughput(size_bytes, stats.runtime.average).tera() << " TB/s)\n";
+    std::cout << "  throughput:      " << tput.tera() << " TOPS (" << benchmark::throughput(size_bytes, stats.runtime.average).tera() << " TB/s)\n";
 }
 
 int main() {
